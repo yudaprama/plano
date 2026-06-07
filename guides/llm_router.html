@@ -1,0 +1,763 @@
+<!DOCTYPE html>
+
+<html :class="{ 'dark' : darkMode === true }" data-content_root="../" lang="en" x-data="{ darkMode: $persist(window.matchMedia('(prefers-color-scheme: dark)').matches), activeSection: ''}">
+<head>
+<script>
+    (function () {
+      // Set initial color scheme
+      if ((localStorage.getItem("_x_darkMode") === "true") || (window.matchMedia("(prefers-color-scheme: dark)").matches)) {
+        document.documentElement.classList.add("dark");
+      }
+
+      // Watch for media preference changes
+      window.matchMedia("(prefers-color-scheme: dark)").addEventListener("change", (event) => {
+        localStorage.setItem("_x_darkMode", event.matches);
+        document.documentElement.classList.toggle("dark", event.matches);
+      });
+    })();
+  </script>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<meta charset="utf-8"/>
+<meta content="#ffffff" media="(prefers-color-scheme: light)" name="theme-color"/>
+<meta content="#030711" media="(prefers-color-scheme: dark)" name="theme-color"/>
+<meta content="width=device-width, initial-scale=1" name="viewport"/>
+<title>LLM Routing | Plano Docs v0.4.23</title>
+<meta content="LLM Routing | Plano Docs v0.4.23" property="og:title"/>
+<meta content="LLM Routing | Plano Docs v0.4.23" name="twitter:title"/>
+<link href="../_static/pygments.css?v=73db4dac" rel="stylesheet" type="text/css"/>
+<link href="../_static/theme.css?v=979577e3" rel="stylesheet" type="text/css"/>
+<link href="../_static/sphinx-design.min.css?v=95c83b7e" rel="stylesheet" type="text/css"/>
+<link href="../_static/css/custom.css?v=2929376a" rel="stylesheet" type="text/css"/>
+<link href="../_static/awesome-sphinx-design.css?v=b1d4564d" rel="stylesheet" type="text/css"/>
+<link href="./docs/guides/llm_router.html" rel="canonical"/>
+<link href="../_static/favicon.ico" rel="icon"/>
+<link href="../search.html" rel="search" title="Search"/>
+<link href="function_calling.html" rel="next" title="Function Calling"/>
+<link href="orchestration.html" rel="prev" title="Orchestration"/>
+</head>
+<body :class="{ 'overflow-hidden': showSidebar }" class="min-h-screen font-sans antialiased bg-background text-foreground" x-data="{ showSidebar: false, showScrollTop: false }">
+<div @click.self="showSidebar = false" class="fixed inset-0 z-50 overflow-hidden bg-background/80 backdrop-blur-sm md:hidden" x-cloak="" x-show="showSidebar"></div><div class="relative flex flex-col min-h-screen" id="page"><a class="absolute top-0 left-0 z-[100] block bg-background p-4 text-xl transition -translate-x-full opacity-0 focus:translate-x-0 focus:opacity-100" href="#content">
+      Skip to content
+    </a><header class="sticky top-0 z-40 w-full border-b shadow-xs border-border bg-background/90 backdrop-blur"><div class="container flex items-center h-14">
+<div class="hidden mr-4 md:flex">
+<a class="flex items-center mr-6" href="../index.html">
+<img alt="Logo" class="mr-2 dark:invert" height="24" src="../_static/favicon.ico" width="24"/><span class="hidden font-bold sm:inline-block text-clip whitespace-nowrap">Plano Docs v0.4.23</span>
+</a></div><button @click="showSidebar = true" class="inline-flex items-center justify-center h-10 px-0 py-2 mr-2 text-base font-medium transition-colors rounded-md hover:text-accent-foreground hover:bg-transparent md:hidden" type="button">
+<svg aria-hidden="true" fill="currentColor" height="24" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M152.587 825.087q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440Zm0-203.587q-19.152 0-32.326-13.174T107.087 576q0-19.152 13.174-32.326t32.326-13.174h320q19.152 0 32.326 13.174T518.087 576q0 19.152-13.174 32.326T472.587 621.5h-320Zm0-203.587q-19.152 0-32.326-13.174t-13.174-32.326q0-19.152 13.174-32.326t32.326-13.174h440q19.152 0 32.326 13.174t13.174 32.326q0 19.152-13.174 32.326t-32.326 13.174h-440ZM708.913 576l112.174 112.174q12.674 12.674 12.674 31.826t-12.674 31.826Q808.413 764.5 789.261 764.5t-31.826-12.674l-144-144Q600 594.391 600 576t13.435-31.826l144-144q12.674-12.674 31.826-12.674t31.826 12.674q12.674 12.674 12.674 31.826t-12.674 31.826L708.913 576Z"></path>
+</svg>
+<span class="sr-only">Toggle navigation menu</span>
+</button>
+<div class="flex items-center justify-between flex-1 gap-2 sm:gap-4 md:justify-end">
+<div class="flex-1 w-full md:w-auto md:flex-none"><form @keydown.k.window.meta="$refs.search.focus()" action="../search.html" class="relative flex items-center group" id="searchbox" method="get">
+<input aria-label="Search the docs" class="inline-flex items-center font-medium transition-colors bg-transparent focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 ring-offset-background border border-input hover:bg-accent focus:bg-accent hover:text-accent-foreground focus:text-accent-foreground hover:placeholder-accent-foreground py-2 px-4 relative h-9 w-full justify-start rounded-[0.5rem] text-sm text-muted-foreground sm:pr-12 md:w-40 lg:w-64" id="search-input" name="q" placeholder="Search ..." type="search" x-ref="search"/>
+<kbd class="pointer-events-none absolute right-1.5 top-2 hidden h-5 select-none text-muted-foreground items-center gap-1 rounded border border-border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex group-hover:bg-accent group-hover:text-accent-foreground">
+<span class="text-xs">⌘</span>
+    K
+  </kbd>
+</form>
+</div>
+<nav class="flex items-center gap-1">
+<a href="https://github.com/katanemo/plano" rel="noopener nofollow" title="Visit repository on GitHub">
+<div class="inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9">
+<svg fill="currentColor" height="26px" style="margin-top:-2px;display:inline" viewbox="0 0 45 44" xmlns="http://www.w3.org/2000/svg"><path clip-rule="evenodd" d="M22.477.927C10.485.927.76 10.65.76 22.647c0 9.596 6.223 17.736 14.853 20.608 1.087.2 1.483-.47 1.483-1.047 0-.516-.019-1.881-.03-3.693-6.04 1.312-7.315-2.912-7.315-2.912-.988-2.51-2.412-3.178-2.412-3.178-1.972-1.346.149-1.32.149-1.32 2.18.154 3.327 2.24 3.327 2.24 1.937 3.318 5.084 2.36 6.321 1.803.197-1.403.759-2.36 1.379-2.903-4.823-.548-9.894-2.412-9.894-10.734 0-2.37.847-4.31 2.236-5.828-.224-.55-.969-2.759.214-5.748 0 0 1.822-.584 5.972 2.226 1.732-.482 3.59-.722 5.437-.732 1.845.01 3.703.25 5.437.732 4.147-2.81 5.967-2.226 5.967-2.226 1.185 2.99.44 5.198.217 5.748 1.392 1.517 2.232 3.457 2.232 5.828 0 8.344-5.078 10.18-9.916 10.717.779.67 1.474 1.996 1.474 4.021 0 2.904-.027 5.247-.027 5.96 0 .58.392 1.256 1.493 1.044C37.981 40.375 44.2 32.24 44.2 22.647c0-11.996-9.726-21.72-21.722-21.72" fill="currentColor" fill-rule="evenodd"></path></svg>
+</div>
+</a>
+<button @click="darkMode = !darkMode" class="relative inline-flex items-center justify-center px-0 text-sm font-medium transition-colors rounded-md hover:bg-accent hover:text-accent-foreground h-9 w-9" title="Toggle color scheme" type="button">
+<svg class="absolute transition-all scale-100 rotate-0 dark:-rotate-90 dark:scale-0" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 685q45.456 0 77.228-31.772Q589 621.456 589 576q0-45.456-31.772-77.228Q525.456 467 480 467q-45.456 0-77.228 31.772Q371 530.544 371 576q0 45.456 31.772 77.228Q434.544 685 480 685Zm0 91q-83 0-141.5-58.5T280 576q0-83 58.5-141.5T480 376q83 0 141.5 58.5T680 576q0 83-58.5 141.5T480 776ZM80 621.5q-19.152 0-32.326-13.174T34.5 576q0-19.152 13.174-32.326T80 530.5h80q19.152 0 32.326 13.174T205.5 576q0 19.152-13.174 32.326T160 621.5H80Zm720 0q-19.152 0-32.326-13.174T754.5 576q0-19.152 13.174-32.326T800 530.5h80q19.152 0 32.326 13.174T925.5 576q0 19.152-13.174 32.326T880 621.5h-80Zm-320-320q-19.152 0-32.326-13.174T434.5 256v-80q0-19.152 13.174-32.326T480 130.5q19.152 0 32.326 13.174T525.5 176v80q0 19.152-13.174 32.326T480 301.5Zm0 720q-19.152 0-32.326-13.17Q434.5 995.152 434.5 976v-80q0-19.152 13.174-32.326T480 850.5q19.152 0 32.326 13.174T525.5 896v80q0 19.152-13.174 32.33-13.174 13.17-32.326 13.17ZM222.174 382.065l-43-42Q165.5 327.391 166 308.239t13.174-33.065q13.435-13.674 32.587-13.674t32.065 13.674l42.239 43q12.674 13.435 12.555 31.706-.12 18.272-12.555 31.946-12.674 13.674-31.445 13.413-18.772-.261-32.446-13.174Zm494 494.761-42.239-43q-12.674-13.435-12.674-32.087t12.674-31.565Q686.609 756.5 705.38 757q18.772.5 32.446 13.174l43 41.761Q794.5 824.609 794 843.761t-13.174 33.065Q767.391 890.5 748.239 890.5t-32.065-13.674Zm-42-494.761Q660.5 369.391 661 350.62q.5-18.772 13.174-32.446l41.761-43Q728.609 261.5 747.761 262t33.065 13.174q13.674 13.435 13.674 32.587t-13.674 32.065l-43 42.239q-13.435 12.674-31.706 12.555-18.272-.12-31.946-12.555Zm-495 494.761Q165.5 863.391 165.5 844.239t13.674-32.065l43-42.239q13.435-12.674 32.087-12.674t31.565 12.674Q299.5 782.609 299 801.38q-.5 18.772-13.174 32.446l-41.761 43Q231.391 890.5 212.239 890t-33.065-13.174ZM480 576Z"></path>
+</svg>
+<svg class="absolute transition-all scale-0 rotate-90 dark:rotate-0 dark:scale-100" fill="currentColor" height="16" viewbox="0 96 960 960" width="16" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 936q-151 0-255.5-104.5T120 576q0-138 90-239.5T440 218q25-3 39 18t-1 44q-17 26-25.5 55t-8.5 61q0 90 63 153t153 63q31 0 61.5-9t54.5-25q21-14 43-1.5t19 39.5q-14 138-117.5 229T480 936Zm0-80q88 0 158-48.5T740 681q-20 5-40 8t-40 3q-123 0-209.5-86.5T364 396q0-20 3-40t8-40q-78 32-126.5 102T200 576q0 116 82 198t198 82Zm-10-270Z"></path>
+</svg>
+</button>
+</nav>
+</div>
+</div>
+</header>
+<div class="flex-1"><div class="container md:grid md:grid-cols-[220px_minmax(0,1fr)] md:gap-6 lg:grid-cols-[240px_minmax(0,1fr)] lg:gap-10"><aside :aria-hidden="!showSidebar" :class="{ 'translate-x-0': showSidebar }" class="fixed inset-y-0 left-0 md:top-14 z-50 md:z-30 bg-background md:bg-transparent transition-all duration-100 -translate-x-full md:translate-x-0 ml-0 p-6 md:p-0 md:-ml-2 md:h-[calc(100vh-3.5rem)] w-5/6 md:w-full overflow-y-auto border-r border-border md:sticky" id="left-sidebar">
+<a class="justify-start text-sm md:!hidden bg-background" href="../index.html">
+<img alt="Logo" class="mr-2 dark:invert" height="16" src="../_static/favicon.ico" width="16"/><span class="font-bold text-clip whitespace-nowrap">Plano Docs v0.4.23</span>
+</a>
+<div class="relative overflow-hidden md:overflow-auto my-4 md:my-0">
+<div class="overflow-y-auto h-full w-full relative pr-6">
+
+<script async="" src="https://www.googletagmanager.com/gtag/js?id=G-EH2VW19FXE"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'G-EH2VW19FXE');
+</script>
+<nav class="table w-full min-w-full my-6 lg:my-8">
+<p class="caption" role="heading"><span class="caption-text">Get Started</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../get_started/overview.html">Overview</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started/intro_to_plano.html">Intro to Plano</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started/quickstart.html">Quickstart</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../get_started/quickstart.html#next-steps">Next Steps</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Concepts</span></p>
+<ul>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/listeners.html">Listeners</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/agents.html">Agents</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/filter_chain.html">Filter Chains</a></li>
+<li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="../concepts/llm_providers/llm_providers.html">Model (LLM) Providers<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l2"><a class="reference internal" href="../concepts/llm_providers/supported_providers.html">Supported Providers &amp; Configuration</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/llm_providers/client_libraries.html">Client Libraries</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../concepts/llm_providers/model_aliases.html">Model Aliases</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/prompt_target.html">Prompt Target</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../concepts/signals.html">Signals™</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Guides</span></p>
+<ul class="current">
+<li class="toctree-l1"><a class="reference internal" href="orchestration.html">Orchestration</a></li>
+<li class="toctree-l1 current"><a class="current reference internal" href="#">LLM Routing</a></li>
+<li class="toctree-l1"><a class="reference internal" href="function_calling.html">Function Calling</a></li>
+<li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="observability/observability.html">Observability<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l2"><a class="reference internal" href="observability/tracing.html">Tracing</a></li>
+<li class="toctree-l2"><a class="reference internal" href="observability/monitoring.html">Monitoring</a></li>
+<li class="toctree-l2"><a class="reference internal" href="observability/access_logging.html">Access Logging</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="prompt_guard.html">Guardrails</a></li>
+<li class="toctree-l1"><a class="reference internal" href="state.html">Conversational State</a></li>
+</ul>
+<p class="caption" role="heading"><span class="caption-text">Resources</span></p>
+<ul>
+<li class="toctree-l1" x-data="{ expanded: $el.classList.contains('current') ? true : false }"><a :class="{ 'expanded' : expanded }" @click="expanded = !expanded" class="reference internal expandable" href="../resources/tech_overview/tech_overview.html">Tech Overview<button @click.prevent.stop="expanded = !expanded" type="button" x-cloak=""><span class="sr-only"></span><svg fill="currentColor" height="18px" stroke="none" viewbox="0 0 24 24" width="18px" xmlns="http://www.w3.org/2000/svg"><path d="M10 6L8.59 7.41 13.17 12l-4.58 4.59L10 18l6-6z"></path></svg></button></a><ul x-cloak="" x-show="expanded">
+<li class="toctree-l2"><a class="reference internal" href="../resources/tech_overview/request_lifecycle.html">Request Lifecycle</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/tech_overview/model_serving.html">Bright Staff</a></li>
+<li class="toctree-l2"><a class="reference internal" href="../resources/tech_overview/threading_model.html">Threading Model</a></li>
+</ul>
+</li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/deployment.html">Deployment</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/configuration_reference.html">Configuration Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/cli_reference.html">CLI Reference</a></li>
+<li class="toctree-l1"><a class="reference internal" href="../resources/llms_txt.html">llms.txt</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<button @click="showSidebar = false" class="absolute md:hidden right-4 top-4 rounded-sm opacity-70 transition-opacity hover:opacity-100" type="button">
+<svg class="h-4 w-4" fill="currentColor" height="24" stroke="none" viewbox="0 96 960 960" width="24" xmlns="http://www.w3.org/2000/svg">
+<path d="M480 632 284 828q-11 11-28 11t-28-11q-11-11-11-28t11-28l196-196-196-196q-11-11-11-28t11-28q11-11 28-11t28 11l196 196 196-196q11-11 28-11t28 11q11 11 11 28t-11 28L536 576l196 196q11 11 11 28t-11 28q-11 11-28 11t-28-11L480 632Z"></path>
+</svg>
+</button>
+</aside>
+<main class="relative py-6 lg:gap-10 lg:py-8 xl:grid xl:grid-cols-[1fr_300px]">
+<div class="w-full min-w-0 mx-auto">
+<nav aria-label="breadcrumbs" class="flex items-center mb-4 space-x-1 text-sm text-muted-foreground">
+<a class="overflow-hidden text-ellipsis whitespace-nowrap hover:text-foreground" href="../index.html">
+<span class="hidden md:inline">Plano Docs v0.4.23</span>
+<svg aria-label="Home" class="md:hidden" fill="currentColor" height="18" stroke="none" viewbox="0 96 960 960" width="18" xmlns="http://www.w3.org/2000/svg">
+<path d="M240 856h120V616h240v240h120V496L480 316 240 496v360Zm-80 80V456l320-240 320 240v480H520V696h-80v240H160Zm320-350Z"></path>
+</svg>
+</a>
+<div class="mr-1">/</div><span aria-current="page" class="font-medium text-foreground overflow-hidden text-ellipsis whitespace-nowrap">LLM Routing</span>
+</nav>
+<div id="content" role="main">
+<section id="llm-routing">
+<span id="llm-router"></span><h1>LLM Routing<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#llm-routing"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h1>
+<p>With the rapid proliferation of large language models (LLMs) — each optimized for different strengths, style, or latency/cost profile — routing has become an essential technique to operationalize the use of different models. Plano provides three distinct routing approaches to meet different use cases: <a class="reference internal" href="#model-based-routing"><span class="std std-ref">Model-based routing</span></a>, <a class="reference internal" href="#alias-based-routing"><span class="std std-ref">Alias-based routing</span></a>, and <a class="reference internal" href="#preference-aligned-routing"><span class="std std-ref">Preference-aligned routing</span></a>. This enables optimal performance, cost efficiency, and response quality by matching requests with the most suitable model from your available LLM fleet.</p>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>For details on supported model providers, configuration options, and client libraries, see <a class="reference internal" href="../concepts/llm_providers/llm_providers.html#llm-providers"><span class="std std-ref">LLM Providers</span></a>.</p>
+</div>
+<section id="routing-methods">
+<h2>Routing Methods<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#routing-methods" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#routing-methods'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<section id="model-based-routing">
+<span id="id1"></span><h3>Model-based routing<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#model-based-routing" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#model-based-routing'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h3>
+<p>Direct routing allows you to specify exact provider and model combinations using the format <code class="docutils literal notranslate"><span class="pre">provider/model-name</span></code>:</p>
+<ul class="simple">
+<li><p>Use provider-specific names like <code class="docutils literal notranslate"><span class="pre">openai/gpt-5.2</span></code> or <code class="docutils literal notranslate"><span class="pre">anthropic/claude-sonnet-4-5</span></code></p></li>
+<li><p>Provides full control and transparency over which model handles each request</p></li>
+<li><p>Ideal for production workloads where you want predictable routing behavior</p></li>
+</ul>
+<section id="configuration">
+<h4>Configuration<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#configuration"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h4>
+<p>Configure your LLM providers with specific provider/model names:</p>
+<div class="literal-block-wrapper docutils container" id="id9">
+<div class="code-block-caption"><span class="caption-text">Model-based Routing Configuration</span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id9"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">listeners</span><span class="p">:</span>
+</span><span id="line-2"><span class="w">  </span><span class="nt">egress_traffic</span><span class="p">:</span>
+</span><span id="line-3"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0.0.0</span>
+</span><span id="line-4"><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12000</span>
+</span><span id="line-5"><span class="w">    </span><span class="nt">message_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai</span>
+</span><span id="line-6"><span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+</span><span id="line-7">
+</span><span id="line-8"><span class="nt">llm_providers</span><span class="p">:</span>
+</span><span id="line-9"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5.2</span>
+</span><span id="line-10"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-11"><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="line-12">
+</span><span id="line-13"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-14"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-15">
+</span><span id="line-16"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-17"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$ANTHROPIC_API_KEY</span>
+</span></code></pre></div>
+</div>
+</div>
+</section>
+<section id="client-usage">
+<h4>Client usage<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#client-usage"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h4>
+<p>Clients specify exact models:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="c1"># Direct provider/model specification</span>
+</span><span id="line-2"><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="line-3">    <span class="n">model</span><span class="o">=</span><span class="s2">"openai/gpt-5.2"</span><span class="p">,</span>
+</span><span id="line-4">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"Hello!"</span><span class="p">}]</span>
+</span><span id="line-5"><span class="p">)</span>
+</span><span id="line-6">
+</span><span id="line-7"><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="line-8">    <span class="n">model</span><span class="o">=</span><span class="s2">"anthropic/claude-sonnet-4-5"</span><span class="p">,</span>
+</span><span id="line-9">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"Write a story"</span><span class="p">}]</span>
+</span><span id="line-10"><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</section>
+</section>
+<section id="alias-based-routing">
+<span id="id2"></span><h3>Alias-based routing<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#alias-based-routing" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#alias-based-routing'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h3>
+<p>Alias-based routing lets you create semantic model names that decouple your application from specific providers:</p>
+<ul class="simple">
+<li><p>Use meaningful names like <code class="docutils literal notranslate"><span class="pre">fast-model</span></code>, <code class="docutils literal notranslate"><span class="pre">reasoning-model</span></code>, or <code class="docutils literal notranslate"><span class="pre">plano.summarize.v1</span></code> (see <a class="reference internal" href="../concepts/llm_providers/model_aliases.html#model-aliases"><span class="std std-ref">Model Aliases</span></a>)</p></li>
+<li><p>Maps semantic names to underlying provider models for easier experimentation and provider switching</p></li>
+<li><p>Ideal for applications that want abstraction from specific model names while maintaining control</p></li>
+</ul>
+<section id="id3">
+<h4>Configuration<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id3"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h4>
+<p>Configure semantic aliases that map to underlying models:</p>
+<div class="literal-block-wrapper docutils container" id="id10">
+<div class="code-block-caption"><span class="caption-text">Alias-based Routing Configuration</span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id10"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">listeners</span><span class="p">:</span>
+</span><span id="line-2"><span class="w">  </span><span class="nt">egress_traffic</span><span class="p">:</span>
+</span><span id="line-3"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0.0.0</span>
+</span><span id="line-4"><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12000</span>
+</span><span id="line-5"><span class="w">    </span><span class="nt">message_format</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai</span>
+</span><span id="line-6"><span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+</span><span id="line-7">
+</span><span id="line-8"><span class="nt">llm_providers</span><span class="p">:</span>
+</span><span id="line-9"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5.2</span>
+</span><span id="line-10"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-11">
+</span><span id="line-12"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-13"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-14">
+</span><span id="line-15"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-16"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$ANTHROPIC_API_KEY</span>
+</span><span id="line-17">
+</span><span id="line-18"><span class="nt">model_aliases</span><span class="p">:</span>
+</span><span id="line-19"><span class="w">  </span><span class="c1"># Model aliases - friendly names that map to actual provider names</span>
+</span><span id="line-20"><span class="w">  </span><span class="nt">fast-model</span><span class="p">:</span>
+</span><span id="line-21"><span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpt-5.2</span>
+</span><span id="line-22">
+</span><span id="line-23"><span class="w">  </span><span class="nt">reasoning-model</span><span class="p">:</span>
+</span><span id="line-24"><span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpt-5</span>
+</span><span id="line-25">
+</span><span id="line-26"><span class="w">  </span><span class="nt">creative-model</span><span class="p">:</span>
+</span><span id="line-27"><span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude-sonnet-4-5</span>
+</span></code></pre></div>
+</div>
+</div>
+</section>
+<section id="id4">
+<h4>Client usage<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id4"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h4>
+<p>Clients use semantic names:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="c1"># Using semantic aliases</span>
+</span><span id="line-2"><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="line-3">    <span class="n">model</span><span class="o">=</span><span class="s2">"fast-model"</span><span class="p">,</span>  <span class="c1"># Routes to best available fast model</span>
+</span><span id="line-4">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"Quick summary please"</span><span class="p">}]</span>
+</span><span id="line-5"><span class="p">)</span>
+</span><span id="line-6">
+</span><span id="line-7"><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="line-8">    <span class="n">model</span><span class="o">=</span><span class="s2">"reasoning-model"</span><span class="p">,</span>  <span class="c1"># Routes to best reasoning model</span>
+</span><span id="line-9">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"Solve this complex problem"</span><span class="p">}]</span>
+</span><span id="line-10"><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</section>
+</section>
+<section id="preference-aligned-routing-plano-orchestrator">
+<span id="preference-aligned-routing"></span><h3>Preference-aligned routing (Plano-Orchestrator)<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#preference-aligned-routing-plano-orchestrator" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#preference-aligned-routing-plano-orchestrator'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h3>
+<p>Preference-aligned routing uses the <a class="reference external" href="https://huggingface.co/katanemo/Plano-Orchestrator-30B-A3B" rel="nofollow noopener">Plano-Orchestrator<svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a> model to pick the best LLM based on domain, action, and your configured preferences instead of hard-coding a model.</p>
+<ul class="simple">
+<li><p><strong>Domain</strong>: High-level topic of the request (e.g., legal, healthcare, programming).</p></li>
+<li><p><strong>Action</strong>: What the user wants to do (e.g., summarize, generate code, translate).</p></li>
+<li><p><strong>Routing preferences</strong>: Your mapping from (domain, action) to preferred models.</p></li>
+</ul>
+<p>Plano-Orchestrator analyzes each prompt to infer domain and action, then applies your preferences to select a model. This decouples <strong>routing policy</strong> (how to choose) from <strong>model assignment</strong> (what to run), making routing transparent, controllable, and easy to extend as you add or swap models.</p>
+<section id="id5">
+<h4>Configuration<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id5"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h4>
+<p>To configure preference-aligned dynamic routing, declare a top-level <code class="docutils literal notranslate"><span class="pre">routing_preferences</span></code> list and attach an ordered <code class="docutils literal notranslate"><span class="pre">models</span></code> candidate pool to each route. Starting in <code class="docutils literal notranslate"><span class="pre">v0.4.0</span></code>, <code class="docutils literal notranslate"><span class="pre">routing_preferences</span></code> lives at the root of the config (not inline under <code class="docutils literal notranslate"><span class="pre">model_providers</span></code>), which lets multiple models serve the same route — the first entry in <code class="docutils literal notranslate"><span class="pre">models</span></code> is primary, the rest are fallbacks that the client tries on <code class="docutils literal notranslate"><span class="pre">429</span></code>/<code class="docutils literal notranslate"><span class="pre">5xx</span></code> errors.</p>
+<div class="literal-block-wrapper docutils container" id="id11">
+<div class="code-block-caption"><span class="caption-text">Preference-Aligned Dynamic Routing Configuration</span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id11"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.4.0</span>
+</span><span id="line-2">
+</span><span id="line-3"><span class="nt">listeners</span><span class="p">:</span>
+</span><span id="line-4"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">egress_traffic</span>
+</span><span id="line-5"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">model</span>
+</span><span id="line-6"><span class="w">    </span><span class="nt">address</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.0.0.0</span>
+</span><span id="line-7"><span class="w">    </span><span class="nt">port</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">12000</span>
+</span><span id="line-8"><span class="w">    </span><span class="nt">timeout</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">30s</span>
+</span><span id="line-9">
+</span><span id="line-10"><span class="nt">model_providers</span><span class="p">:</span>
+</span><span id="line-11"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5.2</span>
+</span><span id="line-12"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-13"><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="line-14">
+</span><span id="line-15"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-16"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-17">
+</span><span id="line-18"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-19"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$ANTHROPIC_API_KEY</span>
+</span><span id="line-20">
+</span><span id="line-21"><span class="nt">routing_preferences</span><span class="p">:</span>
+</span><span id="line-22"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code understanding</span>
+</span><span id="line-23"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">understand and explain existing code snippets, functions, or libraries</span>
+</span><span id="line-24"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-25"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-26"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-27"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complex reasoning</span>
+</span><span id="line-28"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deep analysis, mathematical problem solving, and logical reasoning</span>
+</span><span id="line-29"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-30"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-31"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative writing</span>
+</span><span id="line-32"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative content generation, storytelling, and writing assistance</span>
+</span><span id="line-33"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-34"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-35"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">code generation</span>
+</span><span id="line-36"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">generating new code snippets, functions, or boilerplate based on user prompts</span>
+</span><span id="line-37"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-38"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-39"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span></code></pre></div>
+</div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>Configs still using the <code class="docutils literal notranslate"><span class="pre">v0.3.0</span></code> inline style (<code class="docutils literal notranslate"><span class="pre">routing_preferences</span></code> nested under each <code class="docutils literal notranslate"><span class="pre">model_provider</span></code>) are auto-migrated to this top-level shape by the Plano CLI at compile time, with a deprecation warning. Update your config to the form above to silence the warning.</p>
+</div>
+</section>
+<section id="id6">
+<h4>Client usage<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id6"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h4>
+<p>Clients can let the router decide or still specify aliases:</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="c1"># Let Plano-Orchestrator choose based on content</span>
+</span><span id="line-2"><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="line-3">    <span class="n">messages</span><span class="o">=</span><span class="p">[{</span><span class="s2">"role"</span><span class="p">:</span> <span class="s2">"user"</span><span class="p">,</span> <span class="s2">"content"</span><span class="p">:</span> <span class="s2">"Write a creative story about space exploration"</span><span class="p">}]</span>
+</span><span id="line-4">    <span class="c1"># No model specified - router will analyze and choose claude-sonnet-4-5</span>
+</span><span id="line-5"><span class="p">)</span>
+</span></code></pre></div>
+</div>
+</section>
+</section>
+</section>
+<section id="id7">
+<h2>Plano-Orchestrator<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id7" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#id7'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<p>Plano-Orchestrator is a <strong>preference-based routing model</strong> specifically designed to address the limitations of traditional LLM routing. It delivers production-ready performance with low latency and high accuracy while solving key routing challenges.</p>
+<p><strong>Addressing Traditional Routing Limitations:</strong></p>
+<p><strong>Human Preference Alignment</strong>
+Unlike benchmark-driven approaches, Plano-Orchestrator learns to match queries with human preferences by using domain-action mappings that capture subjective evaluation criteria, ensuring routing decisions align with real-world user needs.</p>
+<p><strong>Flexible Model Integration</strong>
+The system supports seamlessly adding new models for routing without requiring retraining or architectural modifications, enabling dynamic adaptation to evolving model landscapes.</p>
+<p><strong>Preference-Encoded Routing</strong>
+Provides a practical mechanism to encode user preferences through domain-action mappings, offering transparent and controllable routing decisions that can be customized for specific use cases.</p>
+<p>To support effective routing, Plano-Orchestrator introduces two key concepts:</p>
+<ul class="simple">
+<li><p><strong>Domain</strong> – the high-level thematic category or subject matter of a request (e.g., legal, healthcare, programming).</p></li>
+<li><p><strong>Action</strong> – the specific type of operation the user wants performed (e.g., summarization, code generation, booking appointment, translation).</p></li>
+</ul>
+<p>Both domain and action configs are associated with preferred models or model variants. At inference time, Plano-Orchestrator analyzes the incoming prompt to infer its domain and action using semantic similarity, task indicators, and contextual cues. It then applies the user-defined routing preferences to select the model best suited to handle the request.</p>
+<p>In summary, Plano-Orchestrator demonstrates:</p>
+<ul class="simple">
+<li><p><strong>Structured Preference Routing</strong>: Aligns prompt request with model strengths using explicit domain–action mappings.</p></li>
+<li><p><strong>Transparent and Controllable</strong>: Makes routing decisions transparent and configurable, empowering users to customize system behavior.</p></li>
+<li><p><strong>Flexible and Adaptive</strong>: Supports evolving user needs, model updates, and new domains/actions without retraining the router.</p></li>
+<li><p><strong>Production-Ready Performance</strong>: Optimized for low-latency, high-throughput applications in multi-model environments.</p></li>
+</ul>
+</section>
+<section id="self-hosting-plano-orchestrator">
+<h2>Self-hosting Plano-Orchestrator<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#self-hosting-plano-orchestrator" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#self-hosting-plano-orchestrator'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<p>By default, Plano uses a hosted Plano-Orchestrator endpoint. To run Plano-Orchestrator locally, you can serve the model yourself using either <strong>Ollama</strong> or <strong>vLLM</strong>.</p>
+<section id="using-ollama-recommended-for-local-development">
+<h3>Using Ollama (recommended for local development)<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#using-ollama-recommended-for-local-development" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#using-ollama-recommended-for-local-development'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h3>
+<ol class="arabic">
+<li><p><strong>Install Ollama</strong></p>
+<p>Download and install from <a class="reference external" href="https://ollama.ai" rel="nofollow noopener">ollama.ai<svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>.</p>
+</li>
+<li><p><strong>Pull and serve the routing model</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">ollama<span class="w"> </span>pull<span class="w"> </span>hf.co/katanemo/Arch-Router-1.5B.gguf:Q4_K_M
+</span><span id="line-2">ollama<span class="w"> </span>serve
+</span></code></pre></div>
+</div>
+<p>This downloads the quantized GGUF model from HuggingFace and starts serving on <code class="docutils literal notranslate"><span class="pre">http://localhost:11434</span></code>.</p>
+</li>
+<li><p><strong>Configure Plano to use local routing model</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.4.0</span>
+</span><span id="line-2">
+</span><span id="line-3"><span class="nt">overrides</span><span class="p">:</span>
+</span><span id="line-4"><span class="w">  </span><span class="nt">llm_routing_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">plano/hf.co/katanemo/Arch-Router-1.5B.gguf:Q4_K_M</span>
+</span><span id="line-5">
+</span><span id="line-6"><span class="nt">model_providers</span><span class="p">:</span>
+</span><span id="line-7"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">plano/hf.co/katanemo/Arch-Router-1.5B.gguf:Q4_K_M</span>
+</span><span id="line-8"><span class="w">    </span><span class="nt">base_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:11434</span>
+</span><span id="line-9">
+</span><span id="line-10"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5.2</span>
+</span><span id="line-11"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-12"><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="line-13">
+</span><span id="line-14"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-15"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$ANTHROPIC_API_KEY</span>
+</span><span id="line-16">
+</span><span id="line-17"><span class="nt">routing_preferences</span><span class="p">:</span>
+</span><span id="line-18"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative writing</span>
+</span><span id="line-19"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative content generation, storytelling, and writing assistance</span>
+</span><span id="line-20"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-21"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span></code></pre></div>
+</div>
+</li>
+<li><p><strong>Verify the model is running</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">curl<span class="w"> </span>http://localhost:11434/v1/models
+</span></code></pre></div>
+</div>
+<p>You should see <code class="docutils literal notranslate"><span class="pre">Arch-Router-1.5B</span></code> listed in the response.</p>
+</li>
+</ol>
+</section>
+<section id="using-vllm-recommended-for-production-ec2">
+<h3>Using vLLM (recommended for production / EC2)<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#using-vllm-recommended-for-production-ec2" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#using-vllm-recommended-for-production-ec2'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h3>
+<p>vLLM provides higher throughput and GPU optimizations suitable for production deployments.</p>
+<ol class="arabic">
+<li><p><strong>Install vLLM</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">pip<span class="w"> </span>install<span class="w"> </span>vllm
+</span></code></pre></div>
+</div>
+</li>
+<li><p><strong>Download the model weights</strong></p>
+<p>The GGUF weights are downloaded automatically from HuggingFace on first use. To pre-download:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">pip<span class="w"> </span>install<span class="w"> </span>huggingface_hub
+</span><span id="line-2">huggingface-cli<span class="w"> </span>download<span class="w"> </span>katanemo/Arch-Router-1.5B.gguf
+</span></code></pre></div>
+</div>
+</li>
+<li><p><strong>Start the vLLM server</strong></p>
+<p>After downloading, find the GGUF file and Jinja template in the HuggingFace cache:</p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="c1"># Find the downloaded files</span>
+</span><span id="line-2"><span class="nv">SNAPSHOT_DIR</span><span class="o">=</span><span class="k">$(</span>ls<span class="w"> </span>-d<span class="w"> </span>~/.cache/huggingface/hub/models--katanemo--Arch-Router-1.5B.gguf/snapshots/*/<span class="w"> </span><span class="p">|</span><span class="w"> </span>head<span class="w"> </span>-1<span class="k">)</span>
+</span><span id="line-3">
+</span><span id="line-4">vllm<span class="w"> </span>serve<span class="w"> </span><span class="si">${</span><span class="nv">SNAPSHOT_DIR</span><span class="si">}</span>Arch-Router-1.5B-Q4_K_M.gguf<span class="w"> </span><span class="se">\</span>
+</span><span id="line-5"><span class="w">    </span>--host<span class="w"> </span><span class="m">0</span>.0.0.0<span class="w"> </span><span class="se">\</span>
+</span><span id="line-6"><span class="w">    </span>--port<span class="w"> </span><span class="m">10000</span><span class="w"> </span><span class="se">\</span>
+</span><span id="line-7"><span class="w">    </span>--load-format<span class="w"> </span>gguf<span class="w"> </span><span class="se">\</span>
+</span><span id="line-8"><span class="w">    </span>--chat-template<span class="w"> </span><span class="si">${</span><span class="nv">SNAPSHOT_DIR</span><span class="si">}</span>template.jinja<span class="w"> </span><span class="se">\</span>
+</span><span id="line-9"><span class="w">    </span>--tokenizer<span class="w"> </span>katanemo/Arch-Router-1.5B<span class="w"> </span><span class="se">\</span>
+</span><span id="line-10"><span class="w">    </span>--served-model-name<span class="w"> </span>Plano-Orchestrator<span class="w"> </span><span class="se">\</span>
+</span><span id="line-11"><span class="w">    </span>--gpu-memory-utilization<span class="w"> </span><span class="m">0</span>.3<span class="w"> </span><span class="se">\</span>
+</span><span id="line-12"><span class="w">    </span>--tensor-parallel-size<span class="w"> </span><span class="m">1</span><span class="w"> </span><span class="se">\</span>
+</span><span id="line-13"><span class="w">    </span>--enable-prefix-caching
+</span></code></pre></div>
+</div>
+</li>
+<li><p><strong>Configure Plano to use the vLLM endpoint</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.4.0</span>
+</span><span id="line-2">
+</span><span id="line-3"><span class="nt">overrides</span><span class="p">:</span>
+</span><span id="line-4"><span class="w">  </span><span class="nt">llm_routing_model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">plano/Plano-Orchestrator</span>
+</span><span id="line-5">
+</span><span id="line-6"><span class="nt">model_providers</span><span class="p">:</span>
+</span><span id="line-7"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">plano/Plano-Orchestrator</span>
+</span><span id="line-8"><span class="w">    </span><span class="nt">base_url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://&lt;your-server-ip&gt;:10000</span>
+</span><span id="line-9">
+</span><span id="line-10"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5.2</span>
+</span><span id="line-11"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-12"><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="line-13">
+</span><span id="line-14"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-15"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$ANTHROPIC_API_KEY</span>
+</span><span id="line-16">
+</span><span id="line-17"><span class="nt">routing_preferences</span><span class="p">:</span>
+</span><span id="line-18"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative writing</span>
+</span><span id="line-19"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative content generation, storytelling, and writing assistance</span>
+</span><span id="line-20"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-21"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span></code></pre></div>
+</div>
+</li>
+<li><p><strong>Verify the server is running</strong></p>
+<div class="highlight-bash notranslate"><div class="highlight"><pre><span></span><code><span id="line-1">curl<span class="w"> </span>http://localhost:10000/health
+</span><span id="line-2">curl<span class="w"> </span>http://localhost:10000/v1/models
+</span></code></pre></div>
+</div>
+</li>
+</ol>
+</section>
+<section id="using-vllm-on-kubernetes-gpu-nodes">
+<h3>Using vLLM on Kubernetes (GPU nodes)<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#using-vllm-on-kubernetes-gpu-nodes" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#using-vllm-on-kubernetes-gpu-nodes'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h3>
+<p>For teams running Kubernetes, Plano-Orchestrator and Plano can be deployed as in-cluster services.
+The <code class="docutils literal notranslate"><span class="pre">demos/llm_routing/model_routing_service/</span></code> directory includes ready-to-use manifests:</p>
+<ul class="simple">
+<li><p><code class="docutils literal notranslate"><span class="pre">vllm-deployment.yaml</span></code> — Plano-Orchestrator served by vLLM, with an init container to download
+the model from HuggingFace</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">plano-deployment.yaml</span></code> — Plano proxy configured to use the in-cluster Plano-Orchestrator</p></li>
+<li><p><code class="docutils literal notranslate"><span class="pre">config_k8s.yaml</span></code> — Plano config with <code class="docutils literal notranslate"><span class="pre">llm_routing_model</span></code> pointing at
+<code class="docutils literal notranslate"><span class="pre">http://plano-orchestrator:10000</span></code> instead of the default hosted endpoint</p></li>
+</ul>
+<p>Key things to know before deploying:</p>
+<ul class="simple">
+<li><p>GPU nodes commonly have a <code class="docutils literal notranslate"><span class="pre">nvidia.com/gpu:NoSchedule</span></code> taint — the <code class="docutils literal notranslate"><span class="pre">vllm-deployment.yaml</span></code>
+includes a matching toleration. The <code class="docutils literal notranslate"><span class="pre">nvidia.com/gpu:</span> <span class="pre">"1"</span></code> resource request is sufficient
+for scheduling in most clusters; a <code class="docutils literal notranslate"><span class="pre">nodeSelector</span></code> is optional and commented out in the
+manifest for cases where you need to pin to a specific GPU node pool.</p></li>
+<li><p>Model download takes ~1 minute; vLLM loads the model in ~1-2 minutes after that. The
+<code class="docutils literal notranslate"><span class="pre">livenessProbe</span></code> has a 180-second <code class="docutils literal notranslate"><span class="pre">initialDelaySeconds</span></code> to avoid premature restarts.</p></li>
+<li><p>The Plano config ConfigMap must use <code class="docutils literal notranslate"><span class="pre">--from-file=plano_config.yaml=config_k8s.yaml</span></code> with
+<code class="docutils literal notranslate"><span class="pre">subPath</span></code> in the Deployment — omitting <code class="docutils literal notranslate"><span class="pre">subPath</span></code> causes Kubernetes to mount a directory
+instead of a file.</p></li>
+</ul>
+<p>For the canonical Plano Kubernetes deployment (ConfigMap, Secrets, Deployment YAML), see
+<a class="reference internal" href="../resources/deployment.html#deployment"><span class="std std-ref">Deployment</span></a>. For full step-by-step commands specific to this demo, see the
+<a class="reference external" href="https://github.com/katanemo/plano/tree/main/demos/llm_routing/model_routing_service/README.md" rel="nofollow noopener">demo README<svg fill="currentColor" height="1em" stroke="none" viewbox="0 96 960 960" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M188 868q-11-11-11-28t11-28l436-436H400q-17 0-28.5-11.5T360 336q0-17 11.5-28.5T400 296h320q17 0 28.5 11.5T760 336v320q0 17-11.5 28.5T720 696q-17 0-28.5-11.5T680 656V432L244 868q-11 11-28 11t-28-11Z"></path></svg></a>.</p>
+</section>
+</section>
+<section id="model-affinity">
+<span id="id8"></span><h2>Model Affinity<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#model-affinity" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#model-affinity'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<p>In agentic loops — where a single user request triggers multiple LLM calls through tool use — Plano’s router classifies each turn independently. Because successive prompts differ in intent (tool selection looks like code generation, reasoning about results looks like analysis), the router may select different models mid-session. This causes behavioral inconsistency and invalidates provider-side KV caches, increasing both latency and cost.</p>
+<p><strong>Model affinity</strong> pins the routing decision for the duration of a session. Send an <code class="docutils literal notranslate"><span class="pre">X-Model-Affinity</span></code> header with any string identifier (typically a UUID). The first request routes normally and caches the result. All subsequent requests with the same affinity ID skip routing and reuse the cached model.</p>
+<div class="highlight-python notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="kn">import</span><span class="w"> </span><span class="nn">uuid</span>
+</span><span id="line-2"><span class="kn">from</span><span class="w"> </span><span class="nn">openai</span><span class="w"> </span><span class="kn">import</span> <span class="n">OpenAI</span>
+</span><span id="line-3">
+</span><span id="line-4"><span class="n">client</span> <span class="o">=</span> <span class="n">OpenAI</span><span class="p">(</span><span class="n">base_url</span><span class="o">=</span><span class="s2">"http://localhost:12000/v1"</span><span class="p">,</span> <span class="n">api_key</span><span class="o">=</span><span class="s2">"EMPTY"</span><span class="p">)</span>
+</span><span id="line-5"><span class="n">affinity_id</span> <span class="o">=</span> <span class="nb">str</span><span class="p">(</span><span class="n">uuid</span><span class="o">.</span><span class="n">uuid4</span><span class="p">())</span>
+</span><span id="line-6">
+</span><span id="line-7"><span class="c1"># Every call in the loop uses the same header</span>
+</span><span id="line-8"><span class="n">response</span> <span class="o">=</span> <span class="n">client</span><span class="o">.</span><span class="n">chat</span><span class="o">.</span><span class="n">completions</span><span class="o">.</span><span class="n">create</span><span class="p">(</span>
+</span><span id="line-9">    <span class="n">model</span><span class="o">=</span><span class="s2">"gpt-4o-mini"</span><span class="p">,</span>
+</span><span id="line-10">    <span class="n">messages</span><span class="o">=</span><span class="n">messages</span><span class="p">,</span>
+</span><span id="line-11">    <span class="n">tools</span><span class="o">=</span><span class="n">tools</span><span class="p">,</span>
+</span><span id="line-12">    <span class="n">extra_headers</span><span class="o">=</span><span class="p">{</span><span class="s2">"X-Model-Affinity"</span><span class="p">:</span> <span class="n">affinity_id</span><span class="p">},</span>
+</span><span id="line-13"><span class="p">)</span>
+</span></code></pre></div>
+</div>
+<p>Without the header, routing runs fresh on every request — no behavior change for existing clients.</p>
+<p><strong>Configuration:</strong></p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">routing</span><span class="p">:</span>
+</span><span id="line-2"><span class="w">  </span><span class="nt">session_ttl_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span><span class="w">    </span><span class="c1"># How long affinity lasts (default: 10 min)</span>
+</span><span id="line-3"><span class="w">  </span><span class="nt">session_max_entries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span><span class="w">  </span><span class="c1"># Max cached sessions (upper limit: 10000)</span>
+</span></code></pre></div>
+</div>
+<p>To start a new routing decision (e.g., when the agent’s task changes), generate a new affinity ID.</p>
+<section id="session-cache-backends">
+<h3>Session Cache Backends<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#session-cache-backends" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#session-cache-backends'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h3>
+<p>By default, Plano stores session affinity state in an in-process LRU cache. This works well for single-instance deployments, but sessions are not shared across replicas — each instance has its own independent cache.</p>
+<p>For deployments with multiple Plano replicas (Kubernetes, Docker Compose with <code class="docutils literal notranslate"><span class="pre">scale</span></code>, or any load-balanced setup), use Redis as the session cache backend. All replicas connect to the same Redis instance, so an affinity decision made by one replica is honoured by every other replica in the pool.</p>
+<p><strong>In-memory (default)</strong></p>
+<p>No configuration required. Sessions live only for the lifetime of the process and are lost on restart.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">routing</span><span class="p">:</span>
+</span><span id="line-2"><span class="w">  </span><span class="nt">session_ttl_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span><span class="w">    </span><span class="c1"># How long affinity lasts (default: 10 min)</span>
+</span><span id="line-3"><span class="w">  </span><span class="nt">session_max_entries</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10000</span><span class="w">  </span><span class="c1"># LRU capacity (upper limit: 10000)</span>
+</span></code></pre></div>
+</div>
+<p><strong>Redis</strong></p>
+<p>Requires a reachable Redis instance. The <code class="docutils literal notranslate"><span class="pre">url</span></code> field supports standard Redis URI syntax, including authentication (<code class="docutils literal notranslate"><span class="pre">redis://:password@host:6379</span></code>) and TLS (<code class="docutils literal notranslate"><span class="pre">rediss://host:6380</span></code>). Redis handles TTL expiry natively, so no periodic cleanup is needed.</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">routing</span><span class="p">:</span>
+</span><span id="line-2"><span class="w">  </span><span class="nt">session_ttl_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+</span><span id="line-3"><span class="w">  </span><span class="nt">session_cache</span><span class="p">:</span>
+</span><span id="line-4"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redis</span>
+</span><span id="line-5"><span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redis://localhost:6379</span>
+</span></code></pre></div>
+</div>
+<div class="admonition note">
+<p class="admonition-title">Note</p>
+<p>When using Redis in a multi-tenant environment, construct the <code class="docutils literal notranslate"><span class="pre">X-Model-Affinity</span></code> header value to include a tenant identifier, for example <code class="docutils literal notranslate"><span class="pre">{tenant_id}:{session_id}</span></code>. Plano stores each key under the internal namespace <code class="docutils literal notranslate"><span class="pre">plano:affinity:{key}</span></code>, so tenant-scoped values avoid cross-tenant collisions without any additional configuration.</p>
+</div>
+<p><strong>Example: Kubernetes multi-replica deployment</strong></p>
+<p>Deploy a Redis instance alongside your Plano pods and point all replicas at it:</p>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">routing</span><span class="p">:</span>
+</span><span id="line-2"><span class="w">  </span><span class="nt">session_ttl_seconds</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">600</span>
+</span><span id="line-3"><span class="w">  </span><span class="nt">session_cache</span><span class="p">:</span>
+</span><span id="line-4"><span class="w">    </span><span class="nt">type</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redis</span>
+</span><span id="line-5"><span class="w">    </span><span class="nt">url</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">redis://redis.plano.svc.cluster.local:6379</span>
+</span></code></pre></div>
+</div>
+<p>With this configuration, any replica that first receives a request for affinity ID <code class="docutils literal notranslate"><span class="pre">abc-123</span></code> caches the routing decision in Redis. Subsequent requests for <code class="docutils literal notranslate"><span class="pre">abc-123</span></code> — regardless of which replica they land on — retrieve the same pinned model.</p>
+</section>
+</section>
+<section id="combining-routing-methods">
+<h2>Combining Routing Methods<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#combining-routing-methods" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#combining-routing-methods'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<p>You can combine static model selection with dynamic routing preferences for maximum flexibility:</p>
+<div class="literal-block-wrapper docutils container" id="id12">
+<div class="code-block-caption"><span class="caption-text">Hybrid Routing Configuration</span><a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#id12"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></div>
+<div class="highlight-yaml notranslate"><div class="highlight"><pre><span></span><code><span id="line-1"><span class="nt">version</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">v0.4.0</span>
+</span><span id="line-2">
+</span><span id="line-3"><span class="nt">model_providers</span><span class="p">:</span>
+</span><span id="line-4"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5.2</span>
+</span><span id="line-5"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-6"><span class="w">    </span><span class="nt">default</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">true</span>
+</span><span id="line-7">
+</span><span id="line-8"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-9"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$OPENAI_API_KEY</span>
+</span><span id="line-10">
+</span><span id="line-11"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">model</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-12"><span class="w">    </span><span class="nt">access_key</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">$ANTHROPIC_API_KEY</span>
+</span><span id="line-13">
+</span><span id="line-14"><span class="nt">routing_preferences</span><span class="p">:</span>
+</span><span id="line-15"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">complex_reasoning</span>
+</span><span id="line-16"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">deep analysis and complex problem solving</span>
+</span><span id="line-17"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-18"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-19"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-20"><span class="w">  </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="nt">name</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative_tasks</span>
+</span><span id="line-21"><span class="w">    </span><span class="nt">description</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">creative writing and content generation</span>
+</span><span id="line-22"><span class="w">    </span><span class="nt">models</span><span class="p">:</span>
+</span><span id="line-23"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">anthropic/claude-sonnet-4-5</span>
+</span><span id="line-24"><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">openai/gpt-5</span>
+</span><span id="line-25">
+</span><span id="line-26"><span class="nt">model_aliases</span><span class="p">:</span>
+</span><span id="line-27"><span class="w">  </span><span class="c1"># Model aliases - friendly names that map to actual provider names</span>
+</span><span id="line-28"><span class="w">  </span><span class="nt">fast-model</span><span class="p">:</span>
+</span><span id="line-29"><span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpt-5.2</span>
+</span><span id="line-30">
+</span><span id="line-31"><span class="w">  </span><span class="nt">reasoning-model</span><span class="p">:</span>
+</span><span id="line-32"><span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">gpt-5</span>
+</span><span id="line-33">
+</span><span id="line-34"><span class="w">  </span><span class="c1"># Aliases that can also participate in dynamic routing</span>
+</span><span id="line-35"><span class="w">  </span><span class="nt">creative-model</span><span class="p">:</span>
+</span><span id="line-36"><span class="w">    </span><span class="nt">target</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">claude-sonnet-4-5</span>
+</span></code></pre></div>
+</div>
+</div>
+<p>This configuration allows clients to:</p>
+<ol class="arabic simple">
+<li><p><strong>Use direct model selection</strong>: <code class="docutils literal notranslate"><span class="pre">model="fast-model"</span></code></p></li>
+<li><p><strong>Let the router decide</strong>: No model specified, router analyzes content</p></li>
+</ol>
+</section>
+<section id="example-use-cases">
+<h2>Example Use Cases<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#example-use-cases" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#example-use-cases'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<p>Here are common scenarios where Plano-Orchestrator excels:</p>
+<ul class="simple">
+<li><p><strong>Coding Tasks</strong>: Distinguish between code generation requests (“write a Python function”), debugging needs (“fix this error”), and code optimization (“make this faster”), routing each to appropriately specialized models.</p></li>
+<li><p><strong>Content Processing Workflows</strong>: Classify requests as summarization (“summarize this document”), translation (“translate to Spanish”), or analysis (“what are the key themes”), enabling targeted model selection.</p></li>
+<li><p><strong>Multi-Domain Applications</strong>: Accurately identify whether requests fall into legal, healthcare, technical, or general domains, even when the subject matter isn’t explicitly stated in the prompt.</p></li>
+<li><p><strong>Conversational Routing</strong>: Track conversation context to identify when topics shift between domains or when the type of assistance needed changes mid-conversation.</p></li>
+</ul>
+</section>
+<section id="best-practices">
+<h2>Best practices<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#best-practices" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#best-practices'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<ul class="simple">
+<li><p><strong>💡Consistent Naming:</strong>  Route names should align with their descriptions.</p>
+<ul>
+<li><p>❌ Bad:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">{"name":</span> <span class="pre">"math",</span> <span class="pre">"description":</span> <span class="pre">"handle</span> <span class="pre">solving</span> <span class="pre">quadratic</span> <span class="pre">equations"}</span>
+<span class="pre">`</span></code></p></li>
+<li><p>✅ Good:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">{"name":</span> <span class="pre">"quadratic_equation",</span> <span class="pre">"description":</span> <span class="pre">"solving</span> <span class="pre">quadratic</span> <span class="pre">equations"}</span>
+<span class="pre">`</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>💡 Clear Usage Description:</strong>  Make your route names and descriptions specific, unambiguous, and minimizing overlap between routes. The Router performs better when it can clearly distinguish between different types of requests.</p>
+<ul>
+<li><p>❌ Bad:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">{"name":</span> <span class="pre">"math",</span> <span class="pre">"description":</span> <span class="pre">"anything</span> <span class="pre">closely</span> <span class="pre">related</span> <span class="pre">to</span> <span class="pre">mathematics"}</span>
+<span class="pre">`</span></code></p></li>
+<li><p>✅ Good:
+<code class="docutils literal notranslate"><span class="pre">`</span>
+<span class="pre">{"name":</span> <span class="pre">"math",</span> <span class="pre">"description":</span> <span class="pre">"solving,</span> <span class="pre">explaining</span> <span class="pre">math</span> <span class="pre">problems,</span> <span class="pre">concepts"}</span>
+<span class="pre">`</span></code></p></li>
+</ul>
+</li>
+<li><p><strong>💡Nouns Descriptor:</strong> Preference-based routers perform better with noun-centric descriptors, as they offer more stable and semantically rich signals for matching.</p></li>
+<li><p><strong>💡Domain Inclusion:</strong> for best user experience, you should always include a domain route. This helps the router fall back to domain when action is not confidently inferred.</p></li>
+</ul>
+</section>
+<section id="unsupported-features">
+<h2>Unsupported Features<a @click.prevent="window.navigator.clipboard.writeText($el.href); $el.setAttribute('data-tooltip', 'Copied!'); setTimeout(() =&gt; $el.setAttribute('data-tooltip', 'Copy link to this element'), 2000)" aria-label="Copy link to this element" class="headerlink" data-tooltip="Copy link to this element" href="#unsupported-features" x-intersect.margin.0%.0%.-70%.0%="activeSection = '#unsupported-features'"><svg height="1em" viewbox="0 0 24 24" width="1em" xmlns="http://www.w3.org/2000/svg"><path d="M3.9 12c0-1.71 1.39-3.1 3.1-3.1h4V7H7c-2.76 0-5 2.24-5 5s2.24 5 5 5h4v-1.9H7c-1.71 0-3.1-1.39-3.1-3.1zM8 13h8v-2H8v2zm9-6h-4v1.9h4c1.71 0 3.1 1.39 3.1 3.1s-1.39 3.1-3.1 3.1h-4V17h4c2.76 0 5-2.24 5-5s-2.24-5-5-5z"></path></svg></a></h2>
+<p>The following features are <strong>not supported</strong> by the Plano-Orchestrator routing model:</p>
+<ul class="simple">
+<li><p><strong>Multi-modality</strong>: The model is not trained to process raw image or audio inputs. It can handle textual queries <em>about</em> these modalities (e.g., “generate an image of a cat”), but cannot interpret encoded multimedia data directly.</p></li>
+<li><p><strong>Function calling</strong>: Plano-Orchestrator is designed for <strong>semantic preference matching</strong>, not exact intent classification or tool execution. For structured function invocation, use models in the Plano Function Calling collection instead.</p></li>
+<li><p><strong>System prompt dependency</strong>: Plano-Orchestrator routes based solely on the user’s conversation history. It does not use or rely on system prompts for routing decisions.</p></li>
+</ul>
+</section>
+</section>
+</div><div class="flex justify-between items-center pt-6 mt-12 border-t border-border gap-4">
+<div class="mr-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="orchestration.html">
+<svg class="mr-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="15 18 9 12 15 6"></polyline>
+</svg>
+        Orchestration
+      </a>
+</div>
+<div class="ml-auto">
+<a class="inline-flex items-center justify-center rounded-md text-sm font-medium transition-colors border border-input hover:bg-accent hover:text-accent-foreground py-2 px-4" href="function_calling.html">
+        Function Calling
+        <svg class="ml-2 h-4 w-4" fill="none" height="24" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="2" viewbox="0 0 24 24" width="24" xmlns="http://www.w3.org/2000/svg">
+<polyline points="9 18 15 12 9 6"></polyline>
+</svg>
+</a>
+</div>
+</div></div><aside class="hidden text-sm xl:block" id="right-sidebar">
+<div class="sticky top-16 -mt-10 max-h-[calc(100vh-5rem)] h-full overflow-y-auto pt-6 space-y-2"><p class="font-medium">On this page</p>
+<ul>
+<li><a :data-current="activeSection === '#routing-methods'" class="reference internal" href="#routing-methods">Routing Methods</a><ul>
+<li><a :data-current="activeSection === '#model-based-routing'" class="reference internal" href="#model-based-routing">Model-based routing</a><ul>
+<li><a :data-current="activeSection === '#configuration'" class="reference internal" href="#configuration">Configuration</a></li>
+<li><a :data-current="activeSection === '#client-usage'" class="reference internal" href="#client-usage">Client usage</a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#alias-based-routing'" class="reference internal" href="#alias-based-routing">Alias-based routing</a><ul>
+<li><a :data-current="activeSection === '#id3'" class="reference internal" href="#id3">Configuration</a></li>
+<li><a :data-current="activeSection === '#id4'" class="reference internal" href="#id4">Client usage</a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#preference-aligned-routing-plano-orchestrator'" class="reference internal" href="#preference-aligned-routing-plano-orchestrator">Preference-aligned routing (Plano-Orchestrator)</a><ul>
+<li><a :data-current="activeSection === '#id5'" class="reference internal" href="#id5">Configuration</a></li>
+<li><a :data-current="activeSection === '#id6'" class="reference internal" href="#id6">Client usage</a></li>
+</ul>
+</li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#id7'" class="reference internal" href="#id7">Plano-Orchestrator</a></li>
+<li><a :data-current="activeSection === '#self-hosting-plano-orchestrator'" class="reference internal" href="#self-hosting-plano-orchestrator">Self-hosting Plano-Orchestrator</a><ul>
+<li><a :data-current="activeSection === '#using-ollama-recommended-for-local-development'" class="reference internal" href="#using-ollama-recommended-for-local-development">Using Ollama (recommended for local development)</a></li>
+<li><a :data-current="activeSection === '#using-vllm-recommended-for-production-ec2'" class="reference internal" href="#using-vllm-recommended-for-production-ec2">Using vLLM (recommended for production / EC2)</a></li>
+<li><a :data-current="activeSection === '#using-vllm-on-kubernetes-gpu-nodes'" class="reference internal" href="#using-vllm-on-kubernetes-gpu-nodes">Using vLLM on Kubernetes (GPU nodes)</a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#model-affinity'" class="reference internal" href="#model-affinity">Model Affinity</a><ul>
+<li><a :data-current="activeSection === '#session-cache-backends'" class="reference internal" href="#session-cache-backends">Session Cache Backends</a></li>
+</ul>
+</li>
+<li><a :data-current="activeSection === '#combining-routing-methods'" class="reference internal" href="#combining-routing-methods">Combining Routing Methods</a></li>
+<li><a :data-current="activeSection === '#example-use-cases'" class="reference internal" href="#example-use-cases">Example Use Cases</a></li>
+<li><a :data-current="activeSection === '#best-practices'" class="reference internal" href="#best-practices">Best practices</a></li>
+<li><a :data-current="activeSection === '#unsupported-features'" class="reference internal" href="#unsupported-features">Unsupported Features</a></li>
+</ul>
+</div>
+</aside>
+</main>
+</div>
+</div><footer class="py-6 border-t border-border md:py-0">
+<div class="container flex flex-col items-center justify-between gap-4 md:h-24 md:flex-row">
+<div class="flex flex-col items-center gap-4 px-8 md:flex-row md:gap-2 md:px-0">
+<p class="text-sm leading-loose text-center text-muted-foreground md:text-left">© 2026, Katanemo Labs, a DigitalOcean Company Last updated: Jun 07, 2026. </p>
+</div>
+</div>
+</footer>
+</div>
+<script src="../_static/documentation_options.js?v=c0a1ee0b"></script>
+<script src="../_static/doctools.js?v=9bcbadda"></script>
+<script src="../_static/sphinx_highlight.js?v=dc90522c"></script>
+<script defer="defer" src="../_static/theme.js?v=d6a9845b"></script>
+<script src="../_static/design-tabs.js?v=f930bc37"></script>
+<script src="../_static/js/fix-copy.js?v=2f5cab98"></script>
+</body>
+</html>

@@ -1,0 +1,245 @@
+# Plano Gateway configuration version
+version: v0.4.0
+
+# External HTTP agents - API type is controlled by request path (/v1/responses, /v1/messages, /v1/chat/completions)
+agents:
+  - id: weather_agent # Example agent for weather
+    url: http://localhost:10510
+
+  - id: flight_agent # Example agent for flights
+    url: http://localhost:10520
+
+# MCP filters applied to requests/responses (e.g., input validation, query rewriting)
+filters:
+  - id: input_guards # Example filter for input validation
+    url: http://localhost:10500
+    # type: mcp (default)
+    # transport: streamable-http (default)
+    # tool: input_guards (default - same as filter id)
+
+# LLM provider configurations with API keys and model routing
+model_providers:
+  - model: openai/gpt-4o
+    access_key: $OPENAI_API_KEY
+    default: true
+
+  - model: openai/gpt-4o-mini
+    access_key: $OPENAI_API_KEY
+
+  - model: anthropic/claude-sonnet-4-0
+    access_key: $ANTHROPIC_API_KEY
+
+  - model: mistral/ministral-3b-latest
+    access_key: $MISTRAL_API_KEY
+
+  - model: groq/llama-3.3-70b-versatile
+    access_key: $GROQ_API_KEY
+
+  # passthrough_auth: forwards the client's Authorization header upstream instead of
+  # using the configured access_key. Useful for LiteLLM or similar proxy setups.
+  - model: openai/gpt-4o-litellm
+    base_url: https://litellm.example.com
+    passthrough_auth: true
+
+  # Custom/self-hosted endpoint with explicit http_host override
+  - model: openai/llama-3.3-70b
+    base_url: https://api.custom-provider.com
+    http_host: api.custom-provider.com
+    access_key: $CUSTOM_API_KEY
+
+  # headers: optional map of extra HTTP headers sent on upstream requests (after auth).
+  # Use for provider-specific requirements such as User-Agent, org IDs, or account headers.
+  - model: moonshotai/kimi-for-coding
+    access_key: $MOONSHOTAI_API_KEY
+    base_url: https://api.kimi.com/coding/v1
+    headers:
+      User-Agent: "KimiCLI/1.3"
+
+# Model aliases - use friendly names instead of full provider model names
+model_aliases:
+  fast-llm:
+    target: gpt-4o-mini
+
+  smart-llm:
+    target: gpt-4o
+
+# routing_preferences: top-level list that tags named task categories with an
+# ordered pool of candidate models. Plano's LLM router matches incoming requests
+# against these descriptions and returns an ordered list of models; the client
+# uses models[0] as primary and retries with models[1], models[2]... on 429/5xx.
+# Requires overrides.llm_routing_model to point at Plano-Orchestrator (or equivalent).
+# Each model in `models` must be declared in model_providers above.
+# selection_policy is optional: {prefer: cheapest|fastest|none} lets the router
+# reorder candidates using live cost/latency data from model_metrics_sources.
+routing_preferences:
+  - name: code generation
+    description: generating new code snippets, functions, or boilerplate based on user prompts or requirements
+    models:
+      - anthropic/claude-sonnet-4-0
+      - openai/gpt-4o
+      - groq/llama-3.3-70b-versatile
+  - name: code review
+    description: reviewing, analyzing, and suggesting improvements to existing code
+    models:
+      - anthropic/claude-sonnet-4-0
+      - groq/llama-3.3-70b-versatile
+    selection_policy:
+      prefer: cheapest
+
+# HTTP listeners - entry points for agent routing, prompt targets, and direct LLM access
+listeners:
+  # Agent listener for routing requests to multiple agents
+  - type: agent
+    name: travel_booking_service
+    port: 8001
+    router: plano_orchestrator_v1
+    address: 0.0.0.0
+    agents:
+      - id: rag_agent
+        description: virtual assistant for retrieval augmented generation tasks
+        input_filters:
+          - input_guards
+
+  # Model listener for direct LLM access
+  - type: model
+    name: model_1
+    address: 0.0.0.0
+    port: 12000
+    timeout: 30s          # Request timeout (e.g. "30s", "60s")
+    max_retries: 3        # Number of retries on upstream failure
+    input_filters:        # Filters applied before forwarding to LLM
+      - input_guards
+    output_filters:       # Filters applied to LLM responses before returning to client
+      - input_guards
+
+  # Prompt listener for function calling (for prompt_targets)
+  - type: prompt
+    name: prompt_function_listener
+    address: 0.0.0.0
+    port: 10000
+
+# Reusable service endpoints
+endpoints:
+  app_server:
+    endpoint: 127.0.0.1:80
+    connect_timeout: 0.005s
+    protocol: http        # http or https
+
+  mistral_local:
+    endpoint: 127.0.0.1:8001
+
+  secure_service:
+    endpoint: api.example.com:443
+    protocol: https
+    http_host: api.example.com  # Override the Host header sent upstream
+
+# Optional top-level system prompt applied to all prompt_targets
+system_prompt: |
+  You are a helpful assistant. Always respond concisely and accurately.
+
+# Prompt targets for function calling and API orchestration
+prompt_targets:
+  - name: get_current_weather
+    description: Get current weather at a location.
+    parameters:
+      - name: location
+        description: The location to get the weather for
+        required: true
+        type: string
+        format: City, State
+      - name: days
+        description: the number of days for the request
+        required: true
+        type: int
+    endpoint:
+      name: app_server
+      path: /weather
+      http_method: POST
+    # Per-target system prompt (overrides top-level system_prompt for this target)
+    system_prompt: You are a weather expert. Provide accurate and concise weather information.
+    # auto_llm_dispatch_on_response: when true, the LLM is called again with the
+    # function response to produce a final natural-language answer for the user
+    auto_llm_dispatch_on_response: true
+
+# Rate limits - control token usage per model and request selector
+ratelimits:
+  - model: openai/gpt-4o
+    selector:
+      key: x-user-id       # HTTP header key used to identify the rate-limit subject
+      value: "*"           # Wildcard matches any value; use a specific string to target one
+    limit:
+      tokens: 100000       # Maximum tokens allowed in the given time unit
+      unit: hour           # Time unit: "minute", "hour", or "day"
+
+  - model: openai/gpt-4o-mini
+    selector:
+      key: x-org-id
+      value: acme-corp
+    limit:
+      tokens: 500000
+      unit: day
+
+# Global behavior overrides
+overrides:
+  # Threshold for routing a request to a prompt_target (0.0–1.0). Lower = more permissive.
+  prompt_target_intent_matching_threshold: 0.7
+  # Trim conversation history to fit within the model's context window
+  optimize_context_window: true
+  # Use Plano's agent orchestrator for multi-agent request routing
+  use_agent_orchestrator: false
+  # Connect timeout for upstream provider clusters (e.g., "5s", "10s"). Default: "5s"
+  upstream_connect_timeout: 10s
+  # Path to the trusted CA bundle for upstream TLS verification
+  upstream_tls_ca_path: /etc/ssl/certs/ca-certificates.crt
+  # Model used for intent-based LLM routing (must be listed in model_providers)
+  llm_routing_model: Plano-Orchestrator
+  # Model used for agent orchestration (must be listed in model_providers)
+  agent_orchestration_model: Plano-Orchestrator
+  # Disable agentic signal analysis (frustration, repetition, escalation, etc.)
+  # on LLM responses to save CPU. Default: false.
+  disable_signals: false
+
+# Model affinity — pin routing decisions for agentic loops
+routing:
+  session_ttl_seconds: 600    # How long a pinned session lasts (default: 600s / 10 min)
+  session_max_entries: 10000  # Max cached sessions before eviction (upper limit: 10000)
+  # session_cache controls the backend used to store affinity state.
+  # "memory" (default) is in-process and works for single-instance deployments.
+  # "redis" shares state across replicas — required for multi-replica / Kubernetes setups.
+  session_cache:
+    type: memory              # "memory" (default) or "redis"
+    # url is required when type is "redis". Supports redis:// and rediss:// (TLS).
+    # url: redis://localhost:6379
+    # tenant_header: x-org-id  # optional; when set, keys are scoped as plano:affinity:{tenant_id}:{session_id}
+
+# State storage for multi-turn conversation history
+state_storage:
+  type: memory            # "memory" (in-process) or "postgres" (persistent)
+  # connection_string is required when type is postgres.
+  # Supports environment variable substitution: $VAR or ${VAR}
+  # connection_string: postgresql://user:$DB_PASS@localhost:5432/plano
+
+# Input guardrails applied globally to all incoming requests
+prompt_guards:
+  input_guards:
+    jailbreak:
+      on_exception:
+        message: "I'm sorry, I can't help with that request."
+
+# OpenTelemetry tracing configuration
+tracing:
+  # Random sampling percentage (1-100)
+  random_sampling: 100
+  # Include internal Plano spans in traces
+  trace_arch_internal: false
+  # gRPC endpoint for OpenTelemetry collector (e.g., Jaeger, Tempo)
+  opentracing_grpc_endpoint: http://localhost:4317
+  span_attributes:
+    # Propagate request headers whose names start with these prefixes as span attributes
+    header_prefixes:
+      - x-user-
+      - x-org-
+    # Static key/value pairs added to every span
+    static:
+      environment: production
+      service.team: platform
