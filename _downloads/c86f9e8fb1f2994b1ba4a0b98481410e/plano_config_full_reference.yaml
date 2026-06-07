@@ -219,6 +219,30 @@ state_storage:
   # Supports environment variable substitution: $VAR or ${VAR}
   # connection_string: postgresql://user:$DB_PASS@localhost:5432/plano
 
+# Real-time prepaid billing. When enabled, requests must include an Authorization
+# bearer token that verifies through Talos, and the actor must have enough Redis balance.
+billing:
+  enabled: false
+  redis_url: redis://localhost:6379
+  talos_url: http://localhost:8081
+  talos_admin_token: $TALOS_ADMIN_TOKEN
+  # Optional. If unset, billing uses state_storage.connection_string when state_storage.type is postgres.
+  # audit_database_url: postgresql://user:$DB_PASS@localhost:5432/plano
+  minimum_balance: 1.0
+  verify_cache_ttl_secs: 60
+  default_pricing:
+    input_per_million: 5.0
+    output_per_million: 15.0
+    cache_discount: 0.5
+    estimated_default_tokens: 500
+  pricing:
+    openai/gpt-4o:
+      input_per_million: 2.5
+      output_per_million: 10.0
+    openai/gpt-4o-mini:
+      input_per_million: 0.15
+      output_per_million: 0.6
+
 # Input guardrails applied globally to all incoming requests
 prompt_guards:
   input_guards:
