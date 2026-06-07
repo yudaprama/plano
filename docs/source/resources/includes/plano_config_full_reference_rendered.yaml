@@ -3,6 +3,25 @@ agents:
   url: http://localhost:10510
 - id: flight_agent
   url: http://localhost:10520
+billing:
+  default_pricing:
+    cache_discount: 0.5
+    estimated_default_tokens: 500
+    input_per_million: 5.0
+    output_per_million: 15.0
+  enabled: false
+  minimum_balance: 1.0
+  pricing:
+    openai/gpt-4o:
+      input_per_million: 2.5
+      output_per_million: 10.0
+    openai/gpt-4o-mini:
+      input_per_million: 0.15
+      output_per_million: 0.6
+  redis_url: redis://localhost:6379
+  talos_admin_token: $TALOS_ADMIN_TOKEN
+  talos_url: http://localhost:8081
+  verify_cache_ttl_secs: 60
 endpoints:
   app_server:
     connect_timeout: 0.005s

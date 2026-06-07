@@ -1,6 +1,6 @@
 # Database Setup for Conversation State Storage
 
-This directory contains SQL scripts needed to set up database tables for storing conversation state when using the OpenAI Responses API.
+This directory contains SQL scripts needed to set up database tables for storing conversation state and billing audit logs.
 
 ## Prerequisites
 
@@ -14,18 +14,19 @@ This directory contains SQL scripts needed to set up database tables for storing
 
 ```bash
 psql $DATABASE_URL -f docs/db_setup/conversation_states.sql
+psql $DATABASE_URL -f docs/db_setup/billing.sql
 ```
 
 ### Option 2: Using Supabase Dashboard
 
 1. Log in to your Supabase project dashboard
 2. Navigate to the SQL Editor
-3. Copy and paste the contents of `conversation_states.sql`
+3. Copy and paste the contents of `conversation_states.sql` or `billing.sql`
 4. Run the query
 
 ### Option 3: Direct Database Connection
 
-Connect to your PostgreSQL database using your preferred client and execute the SQL from `conversation_states.sql`.
+Connect to your PostgreSQL database using your preferred client and execute the SQL from `conversation_states.sql` or `billing.sql`.
 
 ## Verification
 
@@ -33,9 +34,11 @@ After running the setup, verify the table was created:
 
 ```sql
 SELECT tablename FROM pg_tables WHERE tablename = 'conversation_states';
+SELECT tablename FROM pg_tables WHERE tablename IN ('billing_balances', 'billing_audit_log');
 ```
 
 You should see `conversation_states` in the results.
+For billing setup, you should see `billing_balances` and `billing_audit_log`.
 
 ## Configuration
 

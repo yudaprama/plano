@@ -8,7 +8,7 @@ services:
       - "12000:12000"
       - "19901:9901"
     volumes:
-      - ${PLANO_CONFIG_FILE:-../demos/getting_started/weather_forecast/plano_config.yaml}:/app/plano_config.yaml
+      - ${PLANO_CONFIG_FILE:-../demos/getting_started/weather_forecast/config.yaml}:/app/plano_config.yaml
       - /etc/ssl/cert.pem:/etc/ssl/cert.pem
       - ./envoy.template.yaml:/app/envoy.template.yaml
       - ./plano_config_schema.yaml:/app/plano_config_schema.yaml
@@ -21,4 +21,7 @@ services:
     environment:
       - OPENAI_API_KEY=${OPENAI_API_KEY:?error}
       - MISTRAL_API_KEY=${MISTRAL_API_KEY:?error}
+      - REDIS_URL=${REDIS_URL:-redis://host.docker.internal:6379}
+      - TALOS_URL=${TALOS_URL:-http://host.docker.internal:8081}
+      - TALOS_ADMIN_TOKEN=${TALOS_ADMIN_TOKEN:-}
       - OTEL_TRACING_GRPC_ENDPOINT=http://host.docker.internal:4317

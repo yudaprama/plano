@@ -3,6 +3,7 @@
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use brightstaff::app_state::AppState;
+use brightstaff::billing::BillingService;
 use brightstaff::handlers::agents::orchestrator::agent_chat;
 use brightstaff::handlers::debug;
 use brightstaff::handlers::empty;
@@ -21,7 +22,7 @@ use brightstaff::state::StateStorage;
 use brightstaff::tracing::init_tracer;
 use bytes::Bytes;
 use common::configuration::{
-    Agent, Configuration, FilterPipeline, ListenerType, ResolvedFilterChain,
+    Agent, Configuration, FilterPipeline, ListenerType, ResolvedFilterChain, StateStorageType,
 };
 use common::consts::{CHAT_COMPLETIONS_PATH, MESSAGES_PATH, OPENAI_RESPONSES_API_PATH};
 use common::llm_providers::LlmProviders;
@@ -329,6 +330,9 @@ async fn init_app_state(
 
     let signals_enabled = !overrides.disable_signals.unwrap_or(false);
 
+    // Initialize billing service if configured
+    let billing = init_billing(config).await?;
+
     Ok(AppState {
         orchestrator_service,
         model_aliases: config.model_aliases.clone(),
@@ -341,6 +345,7 @@ async fn init_app_state(
         http_client: reqwest::Client::new(),
         filter_pipeline,
         signals_enabled,
+        billing,
     })
 }
 
@@ -365,6 +370,45 @@ fn resolve_filter_chain(
         filter_ids: ids,
         agents,
     }))
+}
+
+/// Initialize the billing service if configured.
+async fn init_billing(
+    config: &Configuration,
+) -> Result<Option<Arc<BillingService>>, Box<dyn std::error::Error + Send + Sync>> {
+    let Some(billing_config) = &config.billing else {
+        info!("billing not configured, skipping billing initialization");
+        return Ok(None);
+    };
+
+    if !billing_config.enabled {
+        info!("billing configured but disabled, skipping billing initialization");
+        return Ok(None);
+    }
+
+    info!(
+        talos_url = %billing_config.talos_url,
+        minimum_balance = billing_config.minimum_balance,
+        models_configured = billing_config.pricing.len(),
+        "initializing billing service"
+    );
+
+    let audit_database_url = billing_config.audit_database_url.clone().or_else(|| {
+        config.state_storage.as_ref().and_then(|storage| {
+            if storage.storage_type == StateStorageType::Postgres {
+                storage.connection_string.clone()
+            } else {
+                None
+            }
+        })
+    });
+
+    let service = BillingService::new(billing_config, audit_database_url)
+        .await
+        .map_err(|e| format!("billing service init failed: {e}"))?;
+
+    info!("billing service initialized successfully");
+    Ok(Some(Arc::new(service)))
 }
 
 /// Initialize the conversation state storage backend (if configured).

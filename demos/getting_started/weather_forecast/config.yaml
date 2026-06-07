@@ -66,6 +66,32 @@ prompt_targets:
     # if true arch will forward the response to the default LLM
     auto_llm_dispatch_on_response: false
 
+billing:
+  enabled: false
+  redis_url: $REDIS_URL
+  talos_url: $TALOS_URL
+  talos_admin_token: $TALOS_ADMIN_TOKEN
+  minimum_balance: 1.0
+  verify_cache_ttl_secs: 60
+  default_pricing:
+    input_per_million: 5.0
+    output_per_million: 15.0
+    cache_discount: 0.5
+    estimated_default_tokens: 500
+  pricing:
+    openai/gpt-4o:
+      input_per_million: 2.5
+      output_per_million: 10.0
+    openai/gpt-4o-mini:
+      input_per_million: 0.15
+      output_per_million: 0.6
+    anthropic/claude-sonnet-4-20250514:
+      input_per_million: 3.0
+      output_per_million: 15.0
+    groq/llama-3.2-3b-preview:
+      input_per_million: 0.06
+      output_per_million: 0.06
+
 tracing:
   random_sampling: 100
   trace_arch_internal: true

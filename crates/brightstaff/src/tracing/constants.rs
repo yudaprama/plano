@@ -148,6 +148,30 @@ pub mod plano {
 }
 
 // =============================================================================
+// Span Attributes - Billing
+// =============================================================================
+
+/// Attributes for billing-related operations.
+pub mod billing {
+    /// Customer/actor identifier from API key verification.
+    pub const ACTOR_ID: &str = "billing.actor_id";
+    /// Total credits deducted for this request.
+    pub const CREDITS_DEDUCTED: &str = "billing.credits_deducted";
+    /// Balance before deduction.
+    pub const BALANCE_BEFORE: &str = "billing.balance_before";
+    /// Balance after deduction.
+    pub const BALANCE_AFTER: &str = "billing.balance_after";
+    /// Cost breakdown — input tokens.
+    pub const COST_INPUT: &str = "billing.cost.input";
+    /// Cost breakdown — output tokens.
+    pub const COST_OUTPUT: &str = "billing.cost.output";
+    /// Cost breakdown — total.
+    pub const COST_TOTAL: &str = "billing.cost.total";
+    /// Source of token counts: "reported" (from provider) or "estimated".
+    pub const USAGE_SOURCE: &str = "billing.usage_source";
+}
+
+// =============================================================================
 // Span Attributes - Error Handling
 // =============================================================================
 

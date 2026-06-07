@@ -204,6 +204,73 @@ pub enum LatencyProvider {
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ModelPricing {
+    /// Cost per million input tokens (in credits).
+    pub input_per_million: f64,
+    /// Cost per million output tokens (in credits).
+    pub output_per_million: f64,
+    /// Discount factor for cached input tokens (0.0 = free, 1.0 = full price). Defaults to 0.5.
+    #[serde(default = "default_cache_discount")]
+    pub cache_discount: f64,
+    /// Estimated token count when the upstream response lacks a `usage` block.
+    #[serde(default = "default_estimated_tokens")]
+    pub estimated_default_tokens: i64,
+}
+
+fn default_cache_discount() -> f64 {
+    0.5
+}
+fn default_estimated_tokens() -> i64 {
+    500
+}
+
+impl Default for ModelPricing {
+    fn default() -> Self {
+        Self {
+            input_per_million: 5.0,
+            output_per_million: 15.0,
+            cache_discount: default_cache_discount(),
+            estimated_default_tokens: default_estimated_tokens(),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct BillingConfig {
+    /// Enable or disable billing. When disabled, requests pass through without balance checks.
+    #[serde(default)]
+    pub enabled: bool,
+    /// Redis URL for balance storage, e.g. `rediss://default:${REDIS_PASSWORD}@host:port`.
+    pub redis_url: String,
+    /// Ory Talos verification endpoint, e.g. `http://localhost:8081`.
+    pub talos_url: String,
+    /// Talos admin token for calling the verify endpoint (env var reference).
+    pub talos_admin_token: Option<String>,
+    /// PostgreSQL connection string for billing audit inserts. If unset, billing falls back to
+    /// `state_storage.connection_string` when state storage is configured as postgres.
+    pub audit_database_url: Option<String>,
+    /// Minimum balance (in credits) required to pass the pre-check.
+    #[serde(default = "default_minimum_balance")]
+    pub minimum_balance: f64,
+    /// TTL for cached Talos verification results, in seconds.
+    #[serde(default = "default_verify_cache_ttl")]
+    pub verify_cache_ttl_secs: u64,
+    /// Per-model pricing overrides. Key is the model name as it appears in requests.
+    #[serde(default)]
+    pub pricing: HashMap<String, ModelPricing>,
+    /// Default pricing for models not listed in `pricing`.
+    #[serde(default)]
+    pub default_pricing: ModelPricing,
+}
+
+fn default_minimum_balance() -> f64 {
+    1.0
+}
+fn default_verify_cache_ttl() -> u64 {
+    60
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     pub version: String,
     pub endpoints: Option<HashMap<String, Endpoint>>,
@@ -224,6 +291,7 @@ pub struct Configuration {
     pub state_storage: Option<StateStorageConfig>,
     pub routing_preferences: Option<Vec<TopLevelRoutingPreference>>,
     pub model_metrics_sources: Option<Vec<MetricsSource>>,
+    pub billing: Option<BillingConfig>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

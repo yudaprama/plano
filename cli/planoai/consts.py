@@ -5,7 +5,8 @@ PLANO_COLOR = "#969FF4"
 
 SERVICE_NAME_ARCHGW = "plano"
 PLANO_DOCKER_NAME = "plano"
-PLANO_DOCKER_IMAGE = os.getenv("PLANO_DOCKER_IMAGE", "katanemo/plano:0.4.23")
+PLANO_GITHUB_REPO = os.getenv("PLANO_GITHUB_REPO", "yudaprama/plano")
+PLANO_DOCKER_IMAGE = os.getenv("PLANO_DOCKER_IMAGE", "ghcr.io/yudaprama/plano:0.4.23")
 DEFAULT_OTEL_TRACING_GRPC_ENDPOINT = "http://localhost:4317"
 
 # Native mode constants
@@ -17,5 +18,4 @@ ENVOY_VERSION = "v1.37.0"  # keep in sync with Dockerfile ARG ENVOY_VERSION
 NATIVE_PID_FILE = os.path.join(PLANO_RUN_DIR, "plano.pid")
 DEFAULT_NATIVE_OTEL_TRACING_GRPC_ENDPOINT = "http://localhost:4317"
 
-PLANO_GITHUB_REPO = "katanemo/archgw"
 PLANO_RELEASE_BASE_URL = f"https://github.com/{PLANO_GITHUB_REPO}/releases/download"

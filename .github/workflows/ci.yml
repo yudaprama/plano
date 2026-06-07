@@ -10,8 +10,8 @@ permissions:
   security-events: write
 
 env:
-  PLANO_DOCKER_IMAGE: katanemo/plano:e2e
-  DOCKER_IMAGE: katanemo/plano
+  PLANO_DOCKER_IMAGE: ghcr.io/${{ github.repository }}:e2e
+  DOCKER_IMAGE: ghcr.io/${{ github.repository }}
 
 jobs:
   # ──────────────────────────────────────────────

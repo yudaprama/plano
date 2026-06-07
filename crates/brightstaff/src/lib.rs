@@ -1,4 +1,5 @@
 pub mod app_state;
+pub mod billing;
 pub mod handlers;
 pub mod metrics;
 pub mod router;

@@ -6,10 +6,13 @@ permissions:
 on:
   release:
     types: [published]
+  workflow_dispatch:
 
 jobs:
-  publish-pypi:
+  build-python-package:
     runs-on: ubuntu-latest
+    env:
+      UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
 
     defaults:
       run:
@@ -32,7 +35,12 @@ jobs:
       - name: Build package
         run: uv build --wheel
 
+      - name: Upload wheel artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: planoai-wheel
+          path: cli/dist/*.whl
+
       - name: Publish to PyPI
-        env:
-          UV_PUBLISH_TOKEN: ${{ secrets.PYPI_API_TOKEN }}
+        if: ${{ env.UV_PUBLISH_TOKEN != '' }}
         run: uv publish

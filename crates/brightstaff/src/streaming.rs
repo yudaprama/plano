@@ -6,6 +6,7 @@ use hyper::body::Frame;
 use hyper::header::HeaderMap;
 use opentelemetry::trace::TraceContextExt;
 use opentelemetry::KeyValue;
+use std::sync::Arc;
 use std::time::Instant;
 use tokio::sync::mpsc;
 use tokio_stream::wrappers::ReceiverStream;
@@ -24,7 +25,7 @@ use crate::metrics as bs_metrics;
 use crate::metrics::labels as metric_labels;
 use crate::signals::otel::emit_signals_to_span;
 use crate::signals::{SignalAnalyzer, FLAG_MARKER};
-use crate::tracing::{llm, set_service_name};
+use crate::tracing::{billing as tracing_billing, llm, set_service_name};
 use hermesllm::apis::openai::Message;
 
 /// Parsed usage + resolved-model details from a provider response.
@@ -202,6 +203,12 @@ pub struct ObservableStreamProcessor {
     response_buffer: Vec<u8>,
     llm_metrics: Option<LlmMetricsCtx>,
     metrics_recorded: bool,
+    /// Billing context for credit deduction after stream completes.
+    billing_actor_id: Option<String>,
+    billing_service: Option<Arc<crate::billing::BillingService>>,
+    billing_model: Option<String>,
+    billing_request_id: Option<String>,
+    billing_is_streaming: bool,
 }
 
 impl ObservableStreamProcessor {
@@ -238,6 +245,11 @@ impl ObservableStreamProcessor {
             response_buffer: Vec::new(),
             llm_metrics: None,
             metrics_recorded: false,
+            billing_actor_id: None,
+            billing_service: None,
+            billing_model: None,
+            billing_request_id: None,
+            billing_is_streaming: false,
         }
     }
 
@@ -245,6 +257,23 @@ impl ObservableStreamProcessor {
     /// `brightstaff_llm_*` metrics on first-byte / complete / error.
     pub fn with_llm_metrics(mut self, ctx: LlmMetricsCtx) -> Self {
         self.llm_metrics = Some(ctx);
+        self
+    }
+
+    /// Attach billing context for credit deduction after stream completes.
+    pub fn with_billing(
+        mut self,
+        actor_id: String,
+        service: Arc<crate::billing::BillingService>,
+        model: String,
+        request_id: String,
+        is_streaming: bool,
+    ) -> Self {
+        self.billing_actor_id = Some(actor_id);
+        self.billing_service = Some(service);
+        self.billing_model = Some(model);
+        self.billing_request_id = Some(request_id);
+        self.billing_is_streaming = is_streaming;
         self
     }
 }
@@ -362,6 +391,101 @@ impl StreamProcessor for ObservableStreamProcessor {
             }
             self.metrics_recorded = true;
         }
+        // --- Billing deduction (fire-and-forget spawned task) ---
+        if let (Some(ref actor_id), Some(ref billing_svc)) =
+            (&self.billing_actor_id, &self.billing_service)
+        {
+            let model = usage
+                .resolved_model
+                .clone()
+                .or_else(|| self.billing_model.clone())
+                .unwrap_or_else(|| "unknown".to_string());
+            let provider = self
+                .llm_metrics
+                .as_ref()
+                .map(|ctx| ctx.provider.clone())
+                .unwrap_or_default();
+            let request_id = self.billing_request_id.clone().unwrap_or_default();
+            let is_streaming = self.billing_is_streaming;
+
+            // Convert ExtractedUsage → billing::TokenUsage
+            let mut token_usage = crate::billing::cost::TokenUsage {
+                prompt_tokens: usage.prompt_tokens.unwrap_or(0),
+                completion_tokens: usage.completion_tokens.unwrap_or(0),
+                total_tokens: usage.total_tokens.unwrap_or(0),
+                cached_input_tokens: usage.cached_input_tokens.unwrap_or(0),
+                reasoning_tokens: usage.reasoning_tokens.unwrap_or(0),
+            };
+
+            let cost = if !token_usage.is_empty() {
+                crate::billing::cost::calculate_cost(
+                    &token_usage,
+                    &model,
+                    billing_svc.pricing(),
+                    billing_svc.default_pricing(),
+                )
+            } else {
+                token_usage = crate::billing::cost::estimated_usage(
+                    &model,
+                    billing_svc.pricing(),
+                    billing_svc.default_pricing(),
+                );
+                crate::billing::cost::calculate_estimated_cost(
+                    &model,
+                    billing_svc.pricing(),
+                    billing_svc.default_pricing(),
+                )
+            };
+
+            let actor_id = actor_id.clone();
+            let billing_svc = Arc::clone(billing_svc);
+
+            {
+                let span = tracing::Span::current();
+                let otel_context = span.context();
+                let otel_span = otel_context.span();
+                otel_span.set_attribute(KeyValue::new(tracing_billing::ACTOR_ID, actor_id.clone()));
+                otel_span
+                    .set_attribute(KeyValue::new(tracing_billing::COST_INPUT, cost.input_cost));
+                otel_span.set_attribute(KeyValue::new(
+                    tracing_billing::COST_OUTPUT,
+                    cost.output_cost,
+                ));
+                otel_span
+                    .set_attribute(KeyValue::new(tracing_billing::COST_TOTAL, cost.total_cost));
+                otel_span.set_attribute(KeyValue::new(
+                    tracing_billing::CREDITS_DEDUCTED,
+                    cost.credits_deducted,
+                ));
+                otel_span.set_attribute(KeyValue::new(
+                    tracing_billing::USAGE_SOURCE,
+                    cost.usage_source.as_str(),
+                ));
+            }
+
+            tokio::spawn(async move {
+                if let Err(e) = billing_svc
+                    .deduct_and_audit(
+                        &actor_id,
+                        &cost,
+                        &token_usage,
+                        &model,
+                        &provider,
+                        &request_id,
+                        is_streaming,
+                    )
+                    .await
+                {
+                    warn!(
+                        actor_id = %actor_id,
+                        error = %e,
+                        "billing deduction failed (non-fatal)"
+                    );
+                    bs_metrics::record_billing_deduction_failed("deduct_and_audit");
+                }
+            });
+        }
+
         // Release the buffered bytes early; nothing downstream needs them.
         self.response_buffer.clear();
         self.response_buffer.shrink_to_fit();
