@@ -13,8 +13,8 @@ This directory contains SQL scripts needed to set up database tables for storing
 ### Option 1: Using psql
 
 ```bash
-psql $DATABASE_URL -f docs/db_setup/conversation_states.sql
-psql $DATABASE_URL -f docs/db_setup/billing.sql
+psql $DATABASE_URL -f docs/source/resources/db_setup/conversation_states.sql
+psql $DATABASE_URL -f docs/source/resources/db_setup/billing.sql
 ```
 
 ### Option 2: Using Supabase Dashboard
@@ -34,11 +34,11 @@ After running the setup, verify the table was created:
 
 ```sql
 SELECT tablename FROM pg_tables WHERE tablename = 'conversation_states';
-SELECT tablename FROM pg_tables WHERE tablename IN ('billing_balances', 'billing_audit_log');
+SELECT tablename FROM pg_tables WHERE tablename = 'billing_audit_log';
 ```
 
 You should see `conversation_states` in the results.
-For billing setup, you should see `billing_balances` and `billing_audit_log`.
+For billing setup, you should see `billing_audit_log`.
 
 ## Configuration
 

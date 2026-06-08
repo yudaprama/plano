@@ -37,7 +37,7 @@ impl VerifyCache {
 
     pub fn get(&self, credential: &str) -> Option<VerifyResponse> {
         let key = cache_key(credential);
-        let mut cache = self.cache.lock().ok()?;
+        let mut cache = self.cache.lock().expect("verify cache mutex poisoned");
         if let Some(entry) = cache.get(&key) {
             if entry.inserted_at.elapsed() < self.ttl {
                 return Some(entry.response.clone());
@@ -48,14 +48,13 @@ impl VerifyCache {
     }
 
     pub fn insert(&self, credential: &str, response: VerifyResponse) {
-        if let Ok(mut cache) = self.cache.lock() {
-            cache.put(
-                cache_key(credential),
-                CachedEntry {
-                    response,
-                    inserted_at: Instant::now(),
-                },
-            );
-        }
+        let mut cache = self.cache.lock().expect("verify cache mutex poisoned");
+        cache.put(
+            cache_key(credential),
+            CachedEntry {
+                response,
+                inserted_at: Instant::now(),
+            },
+        );
     }
 }

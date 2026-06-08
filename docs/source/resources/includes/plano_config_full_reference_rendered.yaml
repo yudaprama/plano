@@ -22,6 +22,7 @@ billing:
   talos_admin_token: $TALOS_ADMIN_TOKEN
   talos_url: http://localhost:8081
   verify_cache_ttl_secs: 60
+  talos_timeout_secs: 5
 endpoints:
   app_server:
     connect_timeout: 0.005s

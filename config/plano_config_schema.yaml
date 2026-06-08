@@ -538,6 +538,10 @@ properties:
       verify_cache_ttl_secs:
         type: integer
         default: 60
+      talos_timeout_secs:
+        type: integer
+        default: 5
+        description: Timeout for Talos API key verification requests, in seconds.
       default_pricing:
         $ref: '#/definitions/model_pricing'
       pricing:

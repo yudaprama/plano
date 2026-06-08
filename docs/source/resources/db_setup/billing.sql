@@ -1,12 +1,6 @@
--- Billing tables for real-time prepaid credit deduction.
+-- Billing audit log for real-time prepaid credit deduction.
 -- Run this in the same PostgreSQL/Supabase database used by billing.audit_database_url.
-
-CREATE TABLE IF NOT EXISTS billing_balances (
-    actor_id TEXT PRIMARY KEY,
-    balance_credits DOUBLE PRECISION NOT NULL DEFAULT 0,
-    created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW()
-);
+-- Note: balances are stored in Redis (integer credits * 1_000_000), not in this database.
 
 CREATE TABLE IF NOT EXISTS billing_audit_log (
     id BIGSERIAL PRIMARY KEY,

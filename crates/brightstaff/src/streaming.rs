@@ -159,6 +159,12 @@ pub trait StreamProcessor: Send + 'static {
 
     /// Called when streaming encounters an error
     fn on_error(&mut self, _error: &str) {}
+
+    /// Take the billing deduction handle spawned during `on_complete`.
+    /// The caller should `await` it to ensure deduction completes before the task ends.
+    fn take_billing_handle(&mut self) -> Option<tokio::task::JoinHandle<()>> {
+        None
+    }
 }
 
 impl StreamProcessor for Box<dyn StreamProcessor> {
@@ -173,6 +179,9 @@ impl StreamProcessor for Box<dyn StreamProcessor> {
     }
     fn on_error(&mut self, error: &str) {
         (**self).on_error(error)
+    }
+    fn take_billing_handle(&mut self) -> Option<tokio::task::JoinHandle<()>> {
+        (**self).take_billing_handle()
     }
 }
 
@@ -209,6 +218,8 @@ pub struct ObservableStreamProcessor {
     billing_model: Option<String>,
     billing_request_id: Option<String>,
     billing_is_streaming: bool,
+    /// Set by `on_complete()` — spawned task the caller should await.
+    pending_billing: Option<tokio::task::JoinHandle<()>>,
 }
 
 impl ObservableStreamProcessor {
@@ -250,6 +261,7 @@ impl ObservableStreamProcessor {
             billing_model: None,
             billing_request_id: None,
             billing_is_streaming: false,
+            pending_billing: None,
         }
     }
 
@@ -276,6 +288,157 @@ impl ObservableStreamProcessor {
         self.billing_is_streaming = is_streaming;
         self
     }
+
+    /// Compute billing deduction data from accumulated usage. Called from `on_complete`.
+    fn prepare_billing(&mut self, usage: &ExtractedUsage) {
+        let actor_id = match self.billing_actor_id.take() {
+            Some(a) => a,
+            None => return,
+        };
+        let billing_svc = match self.billing_service.take() {
+            Some(s) => s,
+            None => {
+                self.billing_actor_id = Some(actor_id);
+                return;
+            }
+        };
+        let model = usage
+            .resolved_model
+            .clone()
+            .or_else(|| self.billing_model.take())
+            .unwrap_or_else(|| "unknown".to_string());
+        let provider = self
+            .llm_metrics
+            .as_ref()
+            .map(|ctx| ctx.provider.clone())
+            .unwrap_or_default();
+        let request_id = self.billing_request_id.take().unwrap_or_default();
+        let is_streaming = self.billing_is_streaming;
+
+        let mut token_usage = crate::billing::cost::TokenUsage {
+            prompt_tokens: usage.prompt_tokens.unwrap_or(0),
+            completion_tokens: usage.completion_tokens.unwrap_or(0),
+            total_tokens: usage.total_tokens.unwrap_or(0),
+            cached_input_tokens: usage.cached_input_tokens.unwrap_or(0),
+            reasoning_tokens: usage.reasoning_tokens.unwrap_or(0),
+        };
+
+        let cost = if !token_usage.is_empty() {
+            crate::billing::cost::calculate_cost(
+                &token_usage,
+                &model,
+                billing_svc.pricing(),
+                billing_svc.default_pricing(),
+            )
+        } else {
+            token_usage = crate::billing::cost::estimated_usage(
+                &model,
+                billing_svc.pricing(),
+                billing_svc.default_pricing(),
+            );
+            crate::billing::cost::calculate_estimated_cost(
+                &model,
+                billing_svc.pricing(),
+                billing_svc.default_pricing(),
+            )
+        };
+
+        // Set OTel span attributes before the async deduction
+        {
+            let span = tracing::Span::current();
+            let otel_context = span.context();
+            let otel_span = otel_context.span();
+            otel_span.set_attribute(KeyValue::new(tracing_billing::ACTOR_ID, actor_id.clone()));
+            otel_span
+                .set_attribute(KeyValue::new(tracing_billing::COST_INPUT, cost.input_cost));
+            otel_span.set_attribute(KeyValue::new(
+                tracing_billing::COST_OUTPUT,
+                cost.output_cost,
+            ));
+            otel_span
+                .set_attribute(KeyValue::new(tracing_billing::COST_TOTAL, cost.total_cost));
+            otel_span.set_attribute(KeyValue::new(
+                tracing_billing::CREDITS_DEDUCTED,
+                cost.credits_deducted,
+            ));
+            otel_span.set_attribute(KeyValue::new(
+                tracing_billing::USAGE_SOURCE,
+                cost.usage_source.as_str(),
+            ));
+        }
+
+        self.pending_billing = Some(spawn_billing_deduction(BillingDeductionCtx {
+            actor_id,
+            billing_svc,
+            model,
+            provider,
+            request_id,
+            is_streaming,
+            token_usage,
+            cost,
+        }));
+    }
+
+    /// Take the billing deduction handle (for awaiting after `on_complete`).
+    pub fn take_billing_handle(&mut self) -> Option<tokio::task::JoinHandle<()>> {
+        self.pending_billing.take()
+    }
+}
+struct BillingDeductionCtx {
+    actor_id: String,
+    billing_svc: Arc<crate::billing::BillingService>,
+    model: String,
+    provider: String,
+    request_id: String,
+    is_streaming: bool,
+    token_usage: crate::billing::cost::TokenUsage,
+    cost: crate::billing::cost::CostBreakdown,
+}
+
+/// Spawn a billing deduction task with a timeout.
+fn spawn_billing_deduction(ctx: BillingDeductionCtx) -> tokio::task::JoinHandle<()> {
+    tokio::spawn(async move {
+        let result = tokio::time::timeout(
+            std::time::Duration::from_secs(3),
+            ctx.billing_svc.deduct_and_audit(
+                &ctx.actor_id,
+                &ctx.cost,
+                &ctx.token_usage,
+                &ctx.model,
+                &ctx.provider,
+                &ctx.request_id,
+                ctx.is_streaming,
+            ),
+        )
+        .await;
+
+        match result {
+            Ok(Ok((_before, _after, deducted))) => {
+                if !deducted {
+                    warn!(
+                        actor_id = %ctx.actor_id,
+                        cost = ctx.cost.total_cost,
+                        "billing deduction refused — balance would go negative"
+                    );
+                }
+            }
+            Ok(Err(e)) => {
+                warn!(
+                    actor_id = %ctx.actor_id,
+                    error = %e,
+                    "billing deduction failed"
+                );
+                bs_metrics::record_billing_deduction_failed("deduct_and_audit");
+            }
+            Err(_) => {
+                warn!(
+                    actor_id = %ctx.actor_id,
+                    "billing deduction timed out (3s)"
+                );
+                bs_metrics::record_billing_deduction_failed("timeout");
+            }
+        }
+    })
 }
 
 impl StreamProcessor for ObservableStreamProcessor {
@@ -391,100 +554,9 @@ impl StreamProcessor for ObservableStreamProcessor {
             }
             self.metrics_recorded = true;
         }
-        // --- Billing deduction (fire-and-forget spawned task) ---
-        if let (Some(ref actor_id), Some(ref billing_svc)) =
-            (&self.billing_actor_id, &self.billing_service)
-        {
-            let model = usage
-                .resolved_model
-                .clone()
-                .or_else(|| self.billing_model.clone())
-                .unwrap_or_else(|| "unknown".to_string());
-            let provider = self
-                .llm_metrics
-                .as_ref()
-                .map(|ctx| ctx.provider.clone())
-                .unwrap_or_default();
-            let request_id = self.billing_request_id.clone().unwrap_or_default();
-            let is_streaming = self.billing_is_streaming;
 
-            // Convert ExtractedUsage → billing::TokenUsage
-            let mut token_usage = crate::billing::cost::TokenUsage {
-                prompt_tokens: usage.prompt_tokens.unwrap_or(0),
-                completion_tokens: usage.completion_tokens.unwrap_or(0),
-                total_tokens: usage.total_tokens.unwrap_or(0),
-                cached_input_tokens: usage.cached_input_tokens.unwrap_or(0),
-                reasoning_tokens: usage.reasoning_tokens.unwrap_or(0),
-            };
-
-            let cost = if !token_usage.is_empty() {
-                crate::billing::cost::calculate_cost(
-                    &token_usage,
-                    &model,
-                    billing_svc.pricing(),
-                    billing_svc.default_pricing(),
-                )
-            } else {
-                token_usage = crate::billing::cost::estimated_usage(
-                    &model,
-                    billing_svc.pricing(),
-                    billing_svc.default_pricing(),
-                );
-                crate::billing::cost::calculate_estimated_cost(
-                    &model,
-                    billing_svc.pricing(),
-                    billing_svc.default_pricing(),
-                )
-            };
-
-            let actor_id = actor_id.clone();
-            let billing_svc = Arc::clone(billing_svc);
-
-            {
-                let span = tracing::Span::current();
-                let otel_context = span.context();
-                let otel_span = otel_context.span();
-                otel_span.set_attribute(KeyValue::new(tracing_billing::ACTOR_ID, actor_id.clone()));
-                otel_span
-                    .set_attribute(KeyValue::new(tracing_billing::COST_INPUT, cost.input_cost));
-                otel_span.set_attribute(KeyValue::new(
-                    tracing_billing::COST_OUTPUT,
-                    cost.output_cost,
-                ));
-                otel_span
-                    .set_attribute(KeyValue::new(tracing_billing::COST_TOTAL, cost.total_cost));
-                otel_span.set_attribute(KeyValue::new(
-                    tracing_billing::CREDITS_DEDUCTED,
-                    cost.credits_deducted,
-                ));
-                otel_span.set_attribute(KeyValue::new(
-                    tracing_billing::USAGE_SOURCE,
-                    cost.usage_source.as_str(),
-                ));
-            }
-
-            tokio::spawn(async move {
-                if let Err(e) = billing_svc
-                    .deduct_and_audit(
-                        &actor_id,
-                        &cost,
-                        &token_usage,
-                        &model,
-                        &provider,
-                        &request_id,
-                        is_streaming,
-                    )
-                    .await
-                {
-                    warn!(
-                        actor_id = %actor_id,
-                        error = %e,
-                        "billing deduction failed (non-fatal)"
-                    );
-                    bs_metrics::record_billing_deduction_failed("deduct_and_audit");
-                }
-            });
-        }
+        // Prepare billing context (sync) — the caller awaits the deduction after on_complete.
+        self.prepare_billing(&usage);
 
         // Release the buffered bytes early; nothing downstream needs them.
         self.response_buffer.clear();
@@ -599,6 +671,11 @@ where
             }
 
             processor.on_complete();
+
+            // Await billing deduction so charges aren't lost if the task is killed.
+            if let Some(handle) = processor.take_billing_handle() {
+                let _ = handle.await;
+            }
         }
         .instrument(current_span),
     );
@@ -701,6 +778,11 @@ where
             }
 
             inner_processor.on_complete();
+
+            // Await billing deduction so charges aren't lost if the task is killed.
+            if let Some(handle) = inner_processor.take_billing_handle() {
+                let _ = handle.await;
+            }
             debug!("output filter streaming completed");
         }
         .instrument(current_span),

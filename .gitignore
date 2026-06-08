@@ -153,3 +153,4 @@ apps/*/dist/
 .cursor/
 .agents
 docs/do/
+.claude/

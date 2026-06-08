@@ -10,6 +10,21 @@ fn balance_key(actor_id: &str) -> String {
     format!("{BALANCE_KEY_PREFIX}{actor_id}")
 }
 
+/// Lua script: atomically deduct credits only if the balance would remain >= 0.
+/// Returns: {success (0 or 1), balance_before, balance_after}
+/// If success == 0, the deduction was refused (insufficient balance).
+const DEDUCT_GUARD_SCRIPT: &str = r#"
+local key = KEYS[1]
+local amount = tonumber(ARGV[1])
+local balance = tonumber(redis.call('GET', key)) or 0
+if balance >= amount then
+    redis.call('DECRBY', key, amount)
+    return {1, balance, balance - amount}
+else
+    return {0, balance, balance - amount}
+end
+"#;
+
 pub struct BalanceService {
     redis: redis::aio::MultiplexedConnection,
     pg: Option<PgClient>,
@@ -33,8 +48,9 @@ impl BalanceService {
         Ok(raw.unwrap_or(0) as f64 / 1_000_000.0)
     }
 
-    /// Deduct credits from an actor's balance and log the audit entry.
-    /// Returns (balance_before, balance_after).
+    /// Deduct credits atomically: refuses if balance would go negative.
+    /// Logs the audit entry regardless of outcome (for reconciliation).
+    /// Returns (balance_before, balance_after, was_deducted).
     pub async fn deduct_and_audit(
         &mut self,
         actor_id: &str,
@@ -44,25 +60,32 @@ impl BalanceService {
         provider: &str,
         request_id: &str,
         is_streaming: bool,
-    ) -> Result<(f64, f64), String> {
+    ) -> Result<(f64, f64, bool), String> {
         let key = balance_key(actor_id);
 
-        // Atomic decrement
-        let after_raw: i64 = self
-            .redis
-            .decr(&key, cost.credits_deducted)
+        let script = redis::Script::new(DEDUCT_GUARD_SCRIPT);
+        let result: Vec<i64> = script
+            .key(&key)
+            .arg(cost.credits_deducted)
+            .invoke_async(&mut self.redis)
             .await
-            .map_err(|e| format!("Redis DECRBY failed: {e}"))?;
+            .map_err(|e| format!("Redis Lua deduct failed: {e}"))?;
 
-        let balance_after = after_raw as f64 / 1_000_000.0;
-        let balance_before = (after_raw + cost.credits_deducted) as f64 / 1_000_000.0;
+        let was_deducted = result[0] == 1;
+        let balance_before = result[1] as f64 / 1_000_000.0;
+        let balance_after = result[2] as f64 / 1_000_000.0;
 
-        let went_negative = after_raw < 0;
-        if went_negative {
+        if !was_deducted {
             bs_metrics::record_billing_balance_negative();
+            tracing::warn!(
+                actor_id = %actor_id,
+                balance_credits = balance_before,
+                deduct_credits = cost.credits_deducted as f64 / 1_000_000.0,
+                "deduction refused — balance would go negative"
+            );
         }
 
-        // Fire-and-forget audit log
+        // Audit log (always written for reconciliation)
         let usage_source = cost.usage_source.as_str();
         if let Err(e) = self
             .write_audit_log(
@@ -74,7 +97,7 @@ impl BalanceService {
                 cost,
                 balance_before,
                 balance_after,
-                went_negative,
+                !was_deducted,
                 usage_source,
                 is_streaming,
             )
@@ -83,8 +106,10 @@ impl BalanceService {
             tracing::warn!(actor_id = %actor_id, error = %e, "audit log write failed (non-fatal)");
         }
 
-        bs_metrics::record_billing_deduction(model, usage_source);
-        Ok((balance_before, balance_after))
+        if was_deducted {
+            bs_metrics::record_billing_deduction(model, usage_source);
+        }
+        Ok((balance_before, balance_after, was_deducted))
     }
 
     async fn write_audit_log(

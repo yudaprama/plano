@@ -255,6 +255,9 @@ pub struct BillingConfig {
     /// TTL for cached Talos verification results, in seconds.
     #[serde(default = "default_verify_cache_ttl")]
     pub verify_cache_ttl_secs: u64,
+    /// Timeout for Talos API key verification requests, in seconds.
+    #[serde(default = "default_talos_timeout_secs")]
+    pub talos_timeout_secs: u64,
     /// Per-model pricing overrides. Key is the model name as it appears in requests.
     #[serde(default)]
     pub pricing: HashMap<String, ModelPricing>,
@@ -268,6 +271,9 @@ fn default_minimum_balance() -> f64 {
 }
 fn default_verify_cache_ttl() -> u64 {
     60
+}
+fn default_talos_timeout_secs() -> u64 {
+    5
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

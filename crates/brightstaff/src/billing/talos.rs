@@ -28,9 +28,9 @@ pub struct TalosClient {
 }
 
 impl TalosClient {
-    pub fn new(base_url: String, admin_token: Option<String>) -> Self {
+    pub fn new(base_url: String, admin_token: Option<String>, timeout_secs: u64) -> Self {
         let http = Client::builder()
-            .timeout(Duration::from_secs(2))
+            .timeout(Duration::from_secs(timeout_secs))
             .build()
             .unwrap_or_default();
         Self {
