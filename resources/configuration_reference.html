@@ -419,43 +419,44 @@ credentials.</p>
 </span><span id="line-230"><span class="linenos">230</span><span class="w">  </span><span class="c1"># audit_database_url: postgresql://user:$DB_PASS@localhost:5432/plano</span>
 </span><span id="line-231"><span class="linenos">231</span><span class="w">  </span><span class="nt">minimum_balance</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">1.0</span>
 </span><span id="line-232"><span class="linenos">232</span><span class="w">  </span><span class="nt">verify_cache_ttl_secs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">60</span>
-</span><span id="line-233"><span class="linenos">233</span><span class="w">  </span><span class="nt">default_pricing</span><span class="p">:</span>
-</span><span id="line-234"><span class="linenos">234</span><span class="w">    </span><span class="nt">input_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
-</span><span id="line-235"><span class="linenos">235</span><span class="w">    </span><span class="nt">output_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15.0</span>
-</span><span id="line-236"><span class="linenos">236</span><span class="w">    </span><span class="nt">cache_discount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
-</span><span id="line-237"><span class="linenos">237</span><span class="w">    </span><span class="nt">estimated_default_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
-</span><span id="line-238"><span class="linenos">238</span><span class="w">  </span><span class="nt">pricing</span><span class="p">:</span>
-</span><span id="line-239"><span class="linenos">239</span><span class="w">    </span><span class="nt">openai/gpt-4o</span><span class="p">:</span>
-</span><span id="line-240"><span class="linenos">240</span><span class="w">      </span><span class="nt">input_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.5</span>
-</span><span id="line-241"><span class="linenos">241</span><span class="w">      </span><span class="nt">output_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
-</span><span id="line-242"><span class="linenos">242</span><span class="w">    </span><span class="nt">openai/gpt-4o-mini</span><span class="p">:</span>
-</span><span id="line-243"><span class="linenos">243</span><span class="w">      </span><span class="nt">input_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span>
-</span><span id="line-244"><span class="linenos">244</span><span class="w">      </span><span class="nt">output_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
-</span><span id="line-245"><span class="linenos">245</span>
-</span><span id="line-246"><span class="linenos">246</span><span class="c1"># Input guardrails applied globally to all incoming requests</span>
-</span><span id="line-247"><span class="linenos">247</span><span class="nt">prompt_guards</span><span class="p">:</span>
-</span><span id="line-248"><span class="linenos">248</span><span class="w">  </span><span class="nt">input_guards</span><span class="p">:</span>
-</span><span id="line-249"><span class="linenos">249</span><span class="w">    </span><span class="nt">jailbreak</span><span class="p">:</span>
-</span><span id="line-250"><span class="linenos">250</span><span class="w">      </span><span class="nt">on_exception</span><span class="p">:</span>
-</span><span id="line-251"><span class="linenos">251</span><span class="w">        </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">"I'm</span><span class="nv"> </span><span class="s">sorry,</span><span class="nv"> </span><span class="s">I</span><span class="nv"> </span><span class="s">can't</span><span class="nv"> </span><span class="s">help</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">that</span><span class="nv"> </span><span class="s">request."</span>
-</span><span id="line-252"><span class="linenos">252</span>
-</span><span id="line-253"><span class="linenos">253</span><span class="c1"># OpenTelemetry tracing configuration</span>
-</span><span id="line-254"><span class="linenos">254</span><span class="nt">tracing</span><span class="p">:</span>
-</span><span id="line-255"><span class="linenos">255</span><span class="w">  </span><span class="c1"># Random sampling percentage (1-100)</span>
-</span><span id="line-256"><span class="linenos">256</span><span class="w">  </span><span class="nt">random_sampling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
-</span><span id="line-257"><span class="linenos">257</span><span class="w">  </span><span class="c1"># Include internal Plano spans in traces</span>
-</span><span id="line-258"><span class="linenos">258</span><span class="w">  </span><span class="nt">trace_arch_internal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
-</span><span id="line-259"><span class="linenos">259</span><span class="w">  </span><span class="c1"># gRPC endpoint for OpenTelemetry collector (e.g., Jaeger, Tempo)</span>
-</span><span id="line-260"><span class="linenos">260</span><span class="w">  </span><span class="nt">opentracing_grpc_endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:4317</span>
-</span><span id="line-261"><span class="linenos">261</span><span class="w">  </span><span class="nt">span_attributes</span><span class="p">:</span>
-</span><span id="line-262"><span class="linenos">262</span><span class="w">    </span><span class="c1"># Propagate request headers whose names start with these prefixes as span attributes</span>
-</span><span id="line-263"><span class="linenos">263</span><span class="w">    </span><span class="nt">header_prefixes</span><span class="p">:</span>
-</span><span id="line-264"><span class="linenos">264</span><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">x-user-</span>
-</span><span id="line-265"><span class="linenos">265</span><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">x-org-</span>
-</span><span id="line-266"><span class="linenos">266</span><span class="w">    </span><span class="c1"># Static key/value pairs added to every span</span>
-</span><span id="line-267"><span class="linenos">267</span><span class="w">    </span><span class="nt">static</span><span class="p">:</span>
-</span><span id="line-268"><span class="linenos">268</span><span class="w">      </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
-</span><span id="line-269"><span class="linenos">269</span><span class="w">      </span><span class="nt">service.team</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform</span>
+</span><span id="line-233"><span class="linenos">233</span><span class="w">  </span><span class="nt">talos_timeout_secs</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5</span>
+</span><span id="line-234"><span class="linenos">234</span><span class="w">  </span><span class="nt">default_pricing</span><span class="p">:</span>
+</span><span id="line-235"><span class="linenos">235</span><span class="w">    </span><span class="nt">input_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">5.0</span>
+</span><span id="line-236"><span class="linenos">236</span><span class="w">    </span><span class="nt">output_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">15.0</span>
+</span><span id="line-237"><span class="linenos">237</span><span class="w">    </span><span class="nt">cache_discount</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.5</span>
+</span><span id="line-238"><span class="linenos">238</span><span class="w">    </span><span class="nt">estimated_default_tokens</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">500</span>
+</span><span id="line-239"><span class="linenos">239</span><span class="w">  </span><span class="nt">pricing</span><span class="p">:</span>
+</span><span id="line-240"><span class="linenos">240</span><span class="w">    </span><span class="nt">openai/gpt-4o</span><span class="p">:</span>
+</span><span id="line-241"><span class="linenos">241</span><span class="w">      </span><span class="nt">input_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">2.5</span>
+</span><span id="line-242"><span class="linenos">242</span><span class="w">      </span><span class="nt">output_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">10.0</span>
+</span><span id="line-243"><span class="linenos">243</span><span class="w">    </span><span class="nt">openai/gpt-4o-mini</span><span class="p">:</span>
+</span><span id="line-244"><span class="linenos">244</span><span class="w">      </span><span class="nt">input_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.15</span>
+</span><span id="line-245"><span class="linenos">245</span><span class="w">      </span><span class="nt">output_per_million</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">0.6</span>
+</span><span id="line-246"><span class="linenos">246</span>
+</span><span id="line-247"><span class="linenos">247</span><span class="c1"># Input guardrails applied globally to all incoming requests</span>
+</span><span id="line-248"><span class="linenos">248</span><span class="nt">prompt_guards</span><span class="p">:</span>
+</span><span id="line-249"><span class="linenos">249</span><span class="w">  </span><span class="nt">input_guards</span><span class="p">:</span>
+</span><span id="line-250"><span class="linenos">250</span><span class="w">    </span><span class="nt">jailbreak</span><span class="p">:</span>
+</span><span id="line-251"><span class="linenos">251</span><span class="w">      </span><span class="nt">on_exception</span><span class="p">:</span>
+</span><span id="line-252"><span class="linenos">252</span><span class="w">        </span><span class="nt">message</span><span class="p">:</span><span class="w"> </span><span class="s">"I'm</span><span class="nv"> </span><span class="s">sorry,</span><span class="nv"> </span><span class="s">I</span><span class="nv"> </span><span class="s">can't</span><span class="nv"> </span><span class="s">help</span><span class="nv"> </span><span class="s">with</span><span class="nv"> </span><span class="s">that</span><span class="nv"> </span><span class="s">request."</span>
+</span><span id="line-253"><span class="linenos">253</span>
+</span><span id="line-254"><span class="linenos">254</span><span class="c1"># OpenTelemetry tracing configuration</span>
+</span><span id="line-255"><span class="linenos">255</span><span class="nt">tracing</span><span class="p">:</span>
+</span><span id="line-256"><span class="linenos">256</span><span class="w">  </span><span class="c1"># Random sampling percentage (1-100)</span>
+</span><span id="line-257"><span class="linenos">257</span><span class="w">  </span><span class="nt">random_sampling</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">100</span>
+</span><span id="line-258"><span class="linenos">258</span><span class="w">  </span><span class="c1"># Include internal Plano spans in traces</span>
+</span><span id="line-259"><span class="linenos">259</span><span class="w">  </span><span class="nt">trace_arch_internal</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">false</span>
+</span><span id="line-260"><span class="linenos">260</span><span class="w">  </span><span class="c1"># gRPC endpoint for OpenTelemetry collector (e.g., Jaeger, Tempo)</span>
+</span><span id="line-261"><span class="linenos">261</span><span class="w">  </span><span class="nt">opentracing_grpc_endpoint</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">http://localhost:4317</span>
+</span><span id="line-262"><span class="linenos">262</span><span class="w">  </span><span class="nt">span_attributes</span><span class="p">:</span>
+</span><span id="line-263"><span class="linenos">263</span><span class="w">    </span><span class="c1"># Propagate request headers whose names start with these prefixes as span attributes</span>
+</span><span id="line-264"><span class="linenos">264</span><span class="w">    </span><span class="nt">header_prefixes</span><span class="p">:</span>
+</span><span id="line-265"><span class="linenos">265</span><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">x-user-</span>
+</span><span id="line-266"><span class="linenos">266</span><span class="w">      </span><span class="p p-Indicator">-</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">x-org-</span>
+</span><span id="line-267"><span class="linenos">267</span><span class="w">    </span><span class="c1"># Static key/value pairs added to every span</span>
+</span><span id="line-268"><span class="linenos">268</span><span class="w">    </span><span class="nt">static</span><span class="p">:</span>
+</span><span id="line-269"><span class="linenos">269</span><span class="w">      </span><span class="nt">environment</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">production</span>
+</span><span id="line-270"><span class="linenos">270</span><span class="w">      </span><span class="nt">service.team</span><span class="p">:</span><span class="w"> </span><span class="l l-Scalar l-Scalar-Plain">platform</span>
 </span></code></pre></div>
 </div>
 </div>
