@@ -31,6 +31,33 @@ sh run_demo.sh --with-ui
 - Navigate to http://localhost:3001/ for AnythingLLM
 - Navigate to http://localhost:16686/ for Jaeger tracing UI
 
+## Billing & Usage Tracking (optional)
+
+This demo includes billing configuration (currently disabled). To enable usage-based billing:
+
+1. Set up Redis and PostgreSQL for billing (see [Billing Guide](../../../docs/source/guides/billing.rst))
+2. Run the billing SQL migration:
+   ```sh
+   psql $DATABASE_URL -f docs/source/resources/db_setup/billing.sql
+   ```
+3. Set environment variables:
+   ```sh
+   export REDIS_URL="redis://localhost:6379"
+   export TALOS_URL="https://your-talos-instance.com"  # Optional
+   export TALOS_ADMIN_TOKEN="your-token"  # Optional
+   ```
+4. Enable billing in `config.yaml`:
+   ```yaml
+   billing:
+     enabled: true
+   ```
+5. Set initial user balance in Redis:
+   ```sh
+   redis-cli SET "plano:billing:balance:user_123" 10000000  # $10.00
+   ```
+
+For detailed documentation, see the [Billing & Usage Tracking Guide](../../../docs/source/guides/billing.rst).
+
 ### Stopping Demo
 
 1. To end the demo, run the following command:

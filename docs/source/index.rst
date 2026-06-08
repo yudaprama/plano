@@ -48,6 +48,7 @@ Built by contributors to the widely adopted `Envoy Proxy <https://www.envoyproxy
       guides/orchestration
       guides/llm_router
       guides/function_calling
+      guides/billing
       guides/observability/observability
       guides/prompt_guard
       guides/state
