@@ -128,6 +128,7 @@ pub struct MessagesRequest {
 pub enum MessagesRole {
     User,
     Assistant,
+    System,
 }
 
 /// Cache control types for content blocks
@@ -632,6 +633,7 @@ impl MessagesRole {
         match self {
             MessagesRole::User => "user",
             MessagesRole::Assistant => "assistant",
+            MessagesRole::System => "system",
         }
     }
 }

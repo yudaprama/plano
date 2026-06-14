@@ -2,6 +2,9 @@
 
 Plano is an AI-native proxy server and data plane for agentic applications, built on Envoy proxy. It centralizes agent orchestration, LLM routing, observability, and safety guardrails as an out-of-process dataplane.
 
+> **This is the `yudaprama/plano` fork of [katanemo/plano](https://github.com/katanemo/plano).**
+> See [FORK.md](FORK.md) for what diverges from upstream (billing flow, fork release workflows), the commits ahead of `upstream/main`, known concerns, and how to sync.
+
 ## Build & Test Commands
 
 ```bash
