@@ -103,6 +103,28 @@ pub async fn agent_chat(
                     return Ok(response);
                 }
 
+                // Handle Talos auth errors with proper 401/503 status codes.
+                if let AgentFilterChainError::Pipeline(PipelineError::Unauthorized(msg)) = &err {
+                    warn!(error = %msg, "agent request unauthorized");
+                    return Ok(ResponseHandler::create_unauthorized(msg));
+                }
+                if let AgentFilterChainError::Pipeline(PipelineError::BillingUnavailable(msg)) = &err {
+                    warn!(error = %msg, "billing service unavailable");
+                    let json = serde_json::json!({
+                        "error": {
+                            "type": "billing_unavailable",
+                            "message": msg,
+                        }
+                    });
+                    let mut resp = Response::new(ResponseHandler::create_full_body(json.to_string()));
+                    *resp.status_mut() = hyper::StatusCode::SERVICE_UNAVAILABLE;
+                    resp.headers_mut().insert(
+                        hyper::header::CONTENT_TYPE,
+                        hyper::header::HeaderValue::from_static("application/json"),
+                    );
+                    return Ok(resp);
+                }
+
                 build_error_chain_response(&err)
             }
         }

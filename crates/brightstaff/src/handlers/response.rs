@@ -47,6 +47,29 @@ impl ResponseHandler {
         Self::create_json_error_response(&json)
     }
 
+    /// Create a UNAUTHORIZED (401) error response with a message.
+    /// Used when Talos API key verification fails in the agent path.
+    pub fn create_unauthorized(message: &str) -> Response<BoxBody<Bytes, hyper::Error>> {
+        let json = serde_json::json!({
+            "error": {
+                "type": "invalid_api_key",
+                "message": message,
+            }
+        });
+        let body = Self::create_full_body(json.to_string());
+        let mut response = Response::new(body);
+        *response.status_mut() = hyper::StatusCode::UNAUTHORIZED;
+        response.headers_mut().insert(
+            hyper::header::WWW_AUTHENTICATE,
+            hyper::header::HeaderValue::from_static("Bearer"),
+        );
+        response.headers_mut().insert(
+            hyper::header::CONTENT_TYPE,
+            hyper::header::HeaderValue::from_static("application/json"),
+        );
+        response
+    }
+
     /// Create an INTERNAL_SERVER_ERROR response with a message
     pub fn create_internal_error(message: &str) -> Response<BoxBody<Bytes, hyper::Error>> {
         let json = serde_json::json!({"error": message});

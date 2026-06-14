@@ -467,6 +467,17 @@ def validate_and_render_schema():
                     f"The access_key will be ignored and the client's Authorization header will be forwarded instead."
                 )
 
+            # Resolve $ENV_VAR references in access_key (e.g. $OPENAI_API_KEY)
+            access_key = model_provider.get("access_key")
+            if access_key and "$" in access_key:
+                resolved = os.path.expandvars(access_key)
+                if "$" in resolved:
+                    print(
+                        f"WARNING: access_key for '{model_provider.get('name')}' contains unresolved env vars: "
+                        f"{[w for w in resolved.split() if '$' in w]}"
+                    )
+                model_provider["access_key"] = resolved
+
             model_provider["model"] = model_id
             model_provider["provider_interface"] = provider
             model_provider_name_set.add(model_provider.get("name"))

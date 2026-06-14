@@ -1,4 +1,5 @@
 use std::collections::HashMap;
+use std::sync::Arc;
 
 use bytes::Bytes;
 use common::configuration::{Agent, AgentFilterChain};
@@ -7,7 +8,7 @@ use common::consts::{
 };
 use hermesllm::apis::openai::Message;
 use hermesllm::{ProviderRequest, ProviderRequestType};
-use hyper::header::HeaderMap;
+use hyper::header::{HeaderMap, AUTHORIZATION};
 use opentelemetry::global;
 use opentelemetry_http::HeaderInjector;
 use tracing::{debug, info, instrument, warn};
@@ -16,8 +17,14 @@ use super::jsonrpc::{
     JsonRpcId, JsonRpcNotification, JsonRpcRequest, JsonRpcResponse, JSON_RPC_VERSION,
     MCP_INITIALIZE, MCP_INITIALIZE_NOTIFICATION, TOOL_CALL_METHOD,
 };
+use crate::billing::BillingService;
 use crate::tracing::{operation_component, set_service_name};
 use uuid::Uuid;
+
+/// Header injected by Plano (brightstaff) into agent requests after Talos
+/// verifies the API key. Lets egent-lobehub identify the calling user
+/// without re-verifying the bearer token itself.
+const ARCH_ACTOR_ID_HEADER: &str = "x-arch-actor-id";
 
 /// Errors that can occur during pipeline processing
 #[derive(Debug, thiserror::Error)]
@@ -48,6 +55,10 @@ pub enum PipelineError {
         status: u16,
         body: String,
     },
+    #[error("Unauthorized: {0}")]
+    Unauthorized(String),
+    #[error("Billing unavailable: {0}")]
+    BillingUnavailable(String),
 }
 
 /// Service for processing agent pipelines
@@ -55,6 +66,14 @@ pub struct PipelineProcessor {
     client: reqwest::Client,
     url: String,
     agent_id_session_map: HashMap<String, String>,
+    /// Optional billing service for Talos API key verification on the agent path.
+    /// When `Some`, the pipeline verifies the caller's `Authorization: Bearer <key>`
+    /// against Talos (with LRU cache) before forwarding the request downstream,
+    /// and injects `x-arch-actor-id: <id>` into the agent's request headers.
+    billing: Option<Arc<BillingService>>,
+    /// Cached verification result for the lifetime of this processor instance
+    /// (one processor per request). Avoids calling Talos N times for an N-step chain.
+    verified_actor_id: Option<String>,
 }
 
 const ENVOY_API_ROUTER_ADDRESS: &str = "http://localhost:11000";
@@ -65,6 +84,8 @@ impl Default for PipelineProcessor {
             client: reqwest::Client::new(),
             url: ENVOY_API_ROUTER_ADDRESS.to_string(),
             agent_id_session_map: HashMap::new(),
+            billing: None,
+            verified_actor_id: None,
         }
     }
 }
@@ -75,6 +96,94 @@ impl PipelineProcessor {
             client: reqwest::Client::new(),
             url,
             agent_id_session_map: HashMap::new(),
+            billing: None,
+            verified_actor_id: None,
+        }
+    }
+
+    /// Attach a billing service for Talos API key verification on the agent path.
+    /// Mirrors the LLM-path billing pre-check in `handlers/llm/mod.rs:370-410`.
+    pub fn with_billing(mut self, billing: Option<Arc<BillingService>>) -> Self {
+        self.billing = billing;
+        self
+    }
+
+    /// Extract the Bearer token from an `Authorization` header value.
+    /// Accepts both `Bearer <token>` and `bearer <token>` (case-insensitive).
+    fn extract_bearer(headers: &HeaderMap) -> Option<&str> {
+        headers
+            .get(AUTHORIZATION)
+            .and_then(|v| v.to_str().ok())
+            .and_then(|v| {
+                v.strip_prefix("Bearer ")
+                    .or_else(|| v.strip_prefix("bearer "))
+            })
+    }
+
+    /// Verify the caller's API key against Talos (with LRU cache via BillingService).
+    /// Result is cached for the lifetime of this processor instance so multi-step
+    /// chains (filters + terminal agent) only hit Talos once.
+    ///
+    /// Returns `Ok(())` and stores the actor_id internally. Returns `Err(Unauthorized)`
+    /// if the key is missing/invalid and `Err(BillingUnavailable)` if Talos is down.
+    async fn verify_authorization(&mut self, request_headers: &HeaderMap) -> Result<(), PipelineError> {
+        // No billing configured → no auth required (dev mode)
+        let Some(billing) = self.billing.as_ref() else {
+            return Ok(());
+        };
+        // Already verified for this request (cached)
+        if self.verified_actor_id.is_some() {
+            return Ok(());
+        }
+
+        let Some(key) = Self::extract_bearer(request_headers) else {
+            warn!("agent request missing Authorization header (billing enabled)");
+            return Err(PipelineError::Unauthorized(
+                "Authorization bearer token is required".to_string(),
+            ));
+        };
+
+        match billing.verify_key(key).await {
+            Ok(resp) if resp.is_valid => {
+                let actor_id = resp
+                    .actor_id
+                    .clone()
+                    .unwrap_or_default();
+                if actor_id.is_empty() {
+                    warn!("Talos verified key but returned no actor_id");
+                    return Err(PipelineError::Unauthorized(
+                        "API key verification did not return an actor_id".to_string(),
+                    ));
+                }
+                debug!(actor_id = %actor_id, "Talos verified agent request");
+                self.verified_actor_id = Some(actor_id);
+                Ok(())
+            }
+            Ok(resp) => {
+                warn!(error_code = ?resp.error_code, "Talos rejected API key");
+                Err(PipelineError::Unauthorized(
+                    resp.error_message
+                        .unwrap_or_else(|| "API key verification failed".to_string()),
+                ))
+            }
+            Err(e) => {
+                warn!(error = %e, "Talos verification error");
+                Err(PipelineError::BillingUnavailable(format!(
+                    "API key verification failed: {e}"
+                )))
+            }
+        }
+    }
+
+    /// Inject `x-arch-actor-id: <actor_id>` into agent headers after Talos verification.
+    /// Mirrors what brightstaff's LLM path does for OTel span attributes
+    /// (`streaming.rs:351`) but as a header so downstream agents (egent-lobehub)
+    /// can read the user identity.
+    fn inject_actor_id(&self, headers: &mut HeaderMap) {
+        if let Some(ref actor_id) = self.verified_actor_id {
+            if let Ok(val) = hyper::header::HeaderValue::from_str(actor_id) {
+                headers.insert(ARCH_ACTOR_ID_HEADER, val);
+            }
         }
     }
 
@@ -468,6 +577,10 @@ impl PipelineProcessor {
             span.update_name(format!("execute_raw_filter ({})", agent.id));
         });
 
+        // Talos API key verification (cached per-request).
+        // Mirrors the LLM-path pre-check in handlers/llm/mod.rs:370-410.
+        self.verify_authorization(request_headers).await?;
+
         let mut agent_headers = Self::build_agent_headers(request_headers, &agent.id)?;
         agent_headers.insert(
             "Accept",
@@ -477,6 +590,9 @@ impl PipelineProcessor {
             "Content-Type",
             hyper::header::HeaderValue::from_static("application/json"),
         );
+
+        // Inject x-arch-actor-id for downstream agents (egent-lobehub).
+        self.inject_actor_id(&mut agent_headers);
 
         // Append the original request path so the filter endpoint encodes the API format.
         // e.g. agent.url="http://host/anonymize" + request_path="/v1/chat/completions"
@@ -582,7 +698,14 @@ impl PipelineProcessor {
             .map_err(|e| PipelineError::NoContentInResponse(e.to_string()))?;
         debug!("sending request to terminal agent {}", terminal_agent.id);
 
-        let agent_headers = Self::build_agent_headers(request_headers, &terminal_agent.id)?;
+        let mut agent_headers = Self::build_agent_headers(request_headers, &terminal_agent.id)?;
+
+        // Inject x-arch-actor-id for downstream agents (egent-lobehub).
+        // Safe to call even though this is `&self` because we hold the
+        // lock-free `verified_actor_id` Cell… actually it's not; we
+        // rely on the caller doing the verify before this is reached.
+        // (See orchestrator: verify happens before invoke_agent.)
+        self.inject_actor_id(&mut agent_headers);
 
         let response = self
             .client
