@@ -100,6 +100,7 @@ Do NOT change version strings in `*.lock` files or `Cargo.lock`. Commit message:
 - **Commits:** No `Co-Authored-By`. Short one-line messages. Never push directly to `main` — always feature branch + PR.
 - **Branches:** Use `adil/<feature_name>` format.
 - **Issues:** When a GitHub issue URL is pasted, fetch all context first. Goal is always a PR with passing tests.
+- **Upstream:** Do not look at or fetch the `upstream` remote (katonemo/plano) unless I explicitly ask you to. Focus only on this fork's `origin` remote.
 
 ## Key Conventions
 

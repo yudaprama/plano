@@ -6,7 +6,7 @@ PLANO_COLOR = "#969FF4"
 SERVICE_NAME_ARCHGW = "plano"
 PLANO_DOCKER_NAME = "plano"
 PLANO_GITHUB_REPO = os.getenv("PLANO_GITHUB_REPO", "katanemo/archgw")
-PLANO_DOCKER_IMAGE = os.getenv("PLANO_DOCKER_IMAGE", "katanemo/plano:0.4.24")
+PLANO_DOCKER_IMAGE = os.getenv("PLANO_DOCKER_IMAGE", "katanemo/plano:0.5.5")
 DEFAULT_OTEL_TRACING_GRPC_ENDPOINT = "http://localhost:4317"
 
 # Native mode constants
