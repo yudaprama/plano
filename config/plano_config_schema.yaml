@@ -553,6 +553,15 @@ properties:
       - enabled
       - redis_url
       - talos_url
+  auth:
+    type: object
+    description: Auth edge (Ory Oathkeeper ext_authz). See PLANO_AUTH_TO_ORY_PLAN.md.
+    properties:
+      ext_authz_enabled:
+        type: boolean
+        default: false
+        description: When true, Plano's Envoy runs an ext_authz filter on :12000/:8001 → Oathkeeper /decisions.
+    additionalProperties: false
   prompt_guards:
     type: object
     properties:
