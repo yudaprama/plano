@@ -5,7 +5,6 @@ use common::configuration::{Agent, FilterPipeline, Listener, ModelAlias, SpanAtt
 use common::llm_providers::LlmProviders;
 use tokio::sync::RwLock;
 
-use crate::billing::BillingService;
 use crate::router::orchestrator::OrchestratorService;
 use crate::state::StateStorage;
 
@@ -28,6 +27,4 @@ pub struct AppState {
     /// When false, agentic signal analysis is skipped on LLM responses to save CPU.
     /// Controlled by `overrides.disable_signals` in plano config.
     pub signals_enabled: bool,
-    /// Billing service for API key verification, balance checks, and credit deduction.
-    pub billing: Option<Arc<BillingService>>,
 }

@@ -366,148 +366,16 @@ async fn llm_chat_inner(
     };
     tracing::Span::current().record(tracing_llm::MODEL_NAME, resolved_model.as_str());
 
-    // --- Phase 3.5: Billing identity + balance pre-check ---
-    let actor_id: Option<String> = if let Some(ref billing_svc) = state.billing {
-        let credential = request_headers
-            .get(hyper::header::AUTHORIZATION)
-            .and_then(|v| v.to_str().ok())
-            .and_then(|v| {
-                v.strip_prefix("Bearer ")
-                    .or_else(|| v.strip_prefix("bearer "))
-            });
-
-        let Some(key) = credential else {
-            debug!("no Authorization header for billing-enabled request");
-            bs_metrics::record_billing_precheck("missing_authorization");
-            let error_json = serde_json::json!({
-                "error": {
-                    "type": "invalid_api_key",
-                    "message": "Authorization bearer token is required"
-                }
-            });
-            let mut resp = Response::new(full(error_json.to_string()));
-            *resp.status_mut() = StatusCode::UNAUTHORIZED;
-            resp.headers_mut().insert(
-                hyper::header::CONTENT_TYPE,
-                hyper::header::HeaderValue::from_static("application/json"),
-            );
-            return Ok(resp);
-        };
-
-        let aid = match billing_svc.verify_key(key).await {
-            Ok(resp) if resp.is_valid => {
-                let aid = resp.actor_id.clone().unwrap_or_default();
-                if aid.is_empty() {
-                    warn!("Talos verified key but returned no actor_id");
-                    bs_metrics::record_billing_precheck("missing_actor_id");
-                    let error_json = serde_json::json!({
-                        "error": {
-                            "type": "invalid_api_key",
-                            "message": "API key verification did not return an actor_id"
-                        }
-                    });
-                    let mut resp = Response::new(full(error_json.to_string()));
-                    *resp.status_mut() = StatusCode::UNAUTHORIZED;
-                    resp.headers_mut().insert(
-                        hyper::header::CONTENT_TYPE,
-                        hyper::header::HeaderValue::from_static("application/json"),
-                    );
-                    return Ok(resp);
-                }
-                aid
-            }
-            Ok(resp) => {
-                info!(error_code = ?resp.error_code, "API key verification failed");
-                bs_metrics::record_billing_precheck("invalid_key");
-                let error_json = serde_json::json!({
-                    "error": {
-                        "type": "invalid_api_key",
-                        "message": resp.error_message.unwrap_or_else(|| "API key verification failed".to_string())
-                    }
-                });
-                let mut resp = Response::new(full(error_json.to_string()));
-                *resp.status_mut() = StatusCode::UNAUTHORIZED;
-                resp.headers_mut().insert(
-                    hyper::header::CONTENT_TYPE,
-                    hyper::header::HeaderValue::from_static("application/json"),
-                );
-                return Ok(resp);
-            }
-            Err(e) => {
-                warn!(error = %e, "Talos verification error");
-                bs_metrics::record_billing_verification("error");
-                bs_metrics::record_billing_precheck("verification_error");
-                let error_json = serde_json::json!({
-                    "error": {
-                        "type": "billing_unavailable",
-                        "message": "API key verification failed. Please retry."
-                    }
-                });
-                let mut resp = Response::new(full(error_json.to_string()));
-                *resp.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-                resp.headers_mut().insert(
-                    hyper::header::CONTENT_TYPE,
-                    hyper::header::HeaderValue::from_static("application/json"),
-                );
-                return Ok(resp);
-            }
-        };
-
-        let balance = match billing_svc.check_balance(&aid).await {
-            Ok(balance) => balance,
-            Err(e) => {
-                warn!(
-                    actor_id = %aid,
-                    error = %e,
-                    "billing balance check failed"
-                );
-                bs_metrics::record_billing_precheck("balance_error");
-                let error_json = serde_json::json!({
-                    "error": {
-                        "type": "billing_unavailable",
-                        "message": "Billing balance check failed. Please retry."
-                    }
-                });
-                let mut resp = Response::new(full(error_json.to_string()));
-                *resp.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
-                resp.headers_mut().insert(
-                    hyper::header::CONTENT_TYPE,
-                    hyper::header::HeaderValue::from_static("application/json"),
-                );
-                return Ok(resp);
-            }
-        };
-        if balance < billing_svc.minimum_balance() {
-            info!(
-                actor_id = %aid,
-                balance = balance,
-                minimum = billing_svc.minimum_balance(),
-                "insufficient balance"
-            );
-            bs_metrics::record_billing_precheck("insufficient");
-            let error_json = serde_json::json!({
-                "error": {
-                    "type": "insufficient_balance",
-                    "message": format!(
-                        "Balance ({:.4} credits) is below minimum ({:.4}). Please top up.",
-                        balance, billing_svc.minimum_balance()
-                    )
-                }
-            });
-            let mut resp = Response::new(full(error_json.to_string()));
-            *resp.status_mut() = StatusCode::PAYMENT_REQUIRED;
-            resp.headers_mut().insert(
-                hyper::header::CONTENT_TYPE,
-                hyper::header::HeaderValue::from_static("application/json"),
-            );
-            return Ok(resp);
-        }
-
-        bs_metrics::record_billing_precheck("pass");
-        Some(aid)
-    } else {
-        None
-    };
+    // --- Actor identity (injected by the auth edge) ---
+    // brightstaff no longer verifies API keys or meters billing — that moved to
+    // Ory Oathkeeper (Plano's Envoy ext_authz → Talos) and the external metering
+    // pipeline. The edge injects `x-arch-actor-id` after verifying the key; read
+    // it here so the LLM span can attribute token usage to the actor downstream.
+    let actor_id: Option<String> = request_headers
+        .get("x-arch-actor-id")
+        .and_then(|v| v.to_str().ok())
+        .filter(|s| !s.is_empty())
+        .map(|s| s.to_string());
 
     // --- Phase 4: Forward to upstream and stream back ---
     send_upstream(
@@ -527,7 +395,6 @@ async fn llm_chat_inner(
         request_id,
         &state.filter_pipeline,
         actor_id,
-        state.billing.clone(),
     )
     .await
 }
@@ -806,7 +673,6 @@ async fn send_upstream(
     request_id: String,
     filter_pipeline: &Arc<FilterPipeline>,
     actor_id: Option<String>,
-    billing: Option<Arc<crate::billing::BillingService>>,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
     let span_name = if model_from_request == resolved_model {
         format!("POST {} {}", request_path, resolved_model)
@@ -934,15 +800,10 @@ async fn send_upstream(
         upstream_status: upstream_status.as_u16(),
     });
 
-    // Attach billing context if actor was identified and billing is configured.
-    if let (Some(ref aid), Some(ref billing_svc)) = (&actor_id, &billing) {
-        base_processor = base_processor.with_billing(
-            aid.clone(),
-            Arc::clone(billing_svc),
-            resolved_model.to_string(),
-            request_id.clone(),
-            is_streaming_request,
-        );
+    // Attach the actor id (from the auth edge's x-arch-actor-id) for span
+    // attribution by the downstream metering pipeline.
+    if let Some(ref aid) = &actor_id {
+        base_processor = base_processor.with_actor_id(aid.clone());
     }
 
     let output_filter_request_headers = if filter_pipeline.has_output_filters() {

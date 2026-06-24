@@ -338,6 +338,30 @@ static_resources:
                             cluster: bright_staff
                             timeout: {{ listener.timeout | default('30s') }}
                 http_filters:
+                  {% if ext_authz_enabled %}
+                  # Ory Oathkeeper edge (Scenario B): authorize before routing to the
+                  # agent. Oathkeeper validates the Talos API key and injects
+                  # x-arch-actor-id; non-2xx from /decisions fails the request closed.
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      failure_mode_allow: false
+                      http_service:
+                        server_uri:
+                          uri: oathkeeper:4456
+                          cluster: oathkeeper
+                          timeout: 0.5s
+                        path_prefix: /decisions
+                        authorization_request:
+                          allowed_headers:
+                            - patterns:
+                                - exact: authorization
+                        authorization_response:
+                          allowed_upstream_headers:
+                            - patterns:
+                                - exact: x-arch-actor-id
+                  {% endif %}
                   - name: envoy.filters.http.compressor
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
@@ -536,6 +560,30 @@ static_resources:
                             body:
                               inline_string: "x-arch-llm-provider header not set, llm gateway cannot perform routing\n"
                 http_filters:
+                  {% if ext_authz_enabled %}
+                  # Ory Oathkeeper edge (Scenario B): authorize before the LLM gateway
+                  # WASM runs. Oathkeeper validates the Talos API key and injects
+                  # x-arch-actor-id; non-2xx from /decisions fails the request closed.
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      failure_mode_allow: false
+                      http_service:
+                        server_uri:
+                          uri: oathkeeper:4456
+                          cluster: oathkeeper
+                          timeout: 0.5s
+                        path_prefix: /decisions
+                        authorization_request:
+                          allowed_headers:
+                            - patterns:
+                                - exact: authorization
+                        authorization_response:
+                          allowed_upstream_headers:
+                            - patterns:
+                                - exact: x-arch-actor-id
+                  {% endif %}
                   - name: envoy.filters.http.compressor
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
@@ -593,6 +641,24 @@ static_resources:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.router.v3.Router
 
   clusters:
+{% if ext_authz_enabled %}
+    # Ory Oathkeeper Decision API (ext_authz target). Present only when
+    # auth.ext_authz_enabled is set, so local dev without Oathkeeper is unaffected.
+    - name: oathkeeper
+      connect_timeout: {{ upstream_connect_timeout | default('5s') }}
+      type: LOGICAL_DNS
+      dns_lookup_family: V4_ONLY
+      lb_policy: ROUND_ROBIN
+      load_assignment:
+        cluster_name: oathkeeper
+        endpoints:
+          - lb_endpoints:
+              - endpoint:
+                  address:
+                    socket_address:
+                      address: 127.0.0.1
+                      port_value: 4456
+{% endif %}
 
     - name: plano
       connect_timeout: {{ upstream_connect_timeout | default('5s') }}

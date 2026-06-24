@@ -661,6 +661,10 @@ def validate_and_render_schema():
         "upstream_tls_ca_path", "/etc/ssl/certs/ca-certificates.crt"
     )
 
+    # ext_authz: route Plano requests through Ory Oathkeeper (/decisions) for
+    # API-key auth + balance gating. Off by default (needs Oathkeeper running).
+    ext_authz_enabled = bool(config_yaml.get("auth", {}).get("ext_authz_enabled", False))
+
     data = {
         "prompt_gateway_listener": prompt_gateway,
         "llm_gateway_listener": llm_gateway,
@@ -674,6 +678,7 @@ def validate_and_render_schema():
         "listeners": listeners,
         "upstream_connect_timeout": upstream_connect_timeout,
         "upstream_tls_ca_path": upstream_tls_ca_path,
+        "ext_authz_enabled": ext_authz_enabled,
     }
 
     rendered = template.render(data)
