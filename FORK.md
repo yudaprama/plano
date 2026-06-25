@@ -101,7 +101,7 @@ defaults. To point the CLI at the fork's images, set:
 
 ```bash
 export PLANO_GITHUB_REPO=yudaprama/plano
-export PLANO_DOCKER_IMAGE=ghcr.io/yudaprama/plano:0.5.6
+export PLANO_DOCKER_IMAGE=ghcr.io/yudaprama/plano:0.5.7
 ```
 
 ## Known concerns (carried forward from `cf0fd509`)
