@@ -514,45 +514,6 @@ properties:
         then:
           required:
             - connection_string
-  billing:
-    type: object
-    properties:
-      enabled:
-        type: boolean
-        default: false
-      redis_url:
-        type: string
-        description: Redis URL for prepaid balance storage.
-      talos_url:
-        type: string
-        description: Talos sidecar base URL for API key verification.
-      talos_admin_token:
-        type: string
-        description: Optional Talos admin token.
-      audit_database_url:
-        type: string
-        description: Optional PostgreSQL URL for billing audit logs. Falls back to state_storage.connection_string when state_storage.type is postgres.
-      minimum_balance:
-        type: number
-        default: 1.0
-      verify_cache_ttl_secs:
-        type: integer
-        default: 60
-      talos_timeout_secs:
-        type: integer
-        default: 5
-        description: Timeout for Talos API key verification requests, in seconds.
-      default_pricing:
-        $ref: '#/definitions/model_pricing'
-      pricing:
-        type: object
-        additionalProperties:
-          $ref: '#/definitions/model_pricing'
-    additionalProperties: false
-    required:
-      - enabled
-      - redis_url
-      - talos_url
   auth:
     type: object
     description: Auth edge (Ory Oathkeeper ext_authz). See PLANO_AUTH_TO_ORY_PLAN.md.
@@ -666,25 +627,6 @@ properties:
             - url
             - query
           additionalProperties: false
-
-definitions:
-  model_pricing:
-    type: object
-    properties:
-      input_per_million:
-        type: number
-      output_per_million:
-        type: number
-      cache_discount:
-        type: number
-        default: 0.5
-      estimated_default_tokens:
-        type: integer
-        default: 500
-    additionalProperties: false
-    required:
-      - input_per_million
-      - output_per_million
 
 additionalProperties: false
 required:

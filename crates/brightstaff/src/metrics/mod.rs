@@ -173,31 +173,6 @@ fn describe_all() {
         "Session affinity cache lookups and stores, by outcome."
     );
 
-    describe_counter!(
-        "brightstaff_billing_verifications_total",
-        "API key verification outcomes via Talos, by result."
-    );
-    describe_counter!(
-        "brightstaff_billing_precheck_total",
-        "Balance pre-check outcomes: pass or insufficient."
-    );
-    describe_counter!(
-        "brightstaff_billing_deductions_total",
-        "Successful credit deductions, by model and usage source."
-    );
-    describe_counter!(
-        "brightstaff_billing_deductions_failed_total",
-        "Failed credit deductions (non-fatal), by error type."
-    );
-    describe_counter!(
-        "brightstaff_billing_balance_negative_total",
-        "Requests where deduction pushed balance negative."
-    );
-    describe_histogram!(
-        "brightstaff_billing_talos_verify_duration_seconds",
-        "Latency of Talos API key verification calls."
-    );
-
     describe_gauge!(
         "brightstaff_build_info",
         "Build metadata. Always 1; labels carry version and git SHA."
@@ -399,49 +374,4 @@ pub fn record_session_cache_event(outcome: &'static str) {
         "outcome" => outcome,
     )
     .increment(1);
-}
-
-// ---------------------------------------------------------------------------
-// Billing helpers
-// ---------------------------------------------------------------------------
-
-pub fn record_billing_verification(result: &'static str) {
-    counter!(
-        "brightstaff_billing_verifications_total",
-        "result" => result,
-    )
-    .increment(1);
-}
-
-pub fn record_billing_precheck(result: &'static str) {
-    counter!(
-        "brightstaff_billing_precheck_total",
-        "result" => result,
-    )
-    .increment(1);
-}
-
-pub fn record_billing_deduction(model: &str, usage_source: &str) {
-    counter!(
-        "brightstaff_billing_deductions_total",
-        "model" => model.to_string(),
-        "usage_source" => usage_source.to_string(),
-    )
-    .increment(1);
-}
-
-pub fn record_billing_deduction_failed(error_type: &str) {
-    counter!(
-        "brightstaff_billing_deductions_failed_total",
-        "error_type" => error_type.to_string(),
-    )
-    .increment(1);
-}
-
-pub fn record_billing_balance_negative() {
-    counter!("brightstaff_billing_balance_negative_total").increment(1);
-}
-
-pub fn record_billing_talos_duration(duration: Duration) {
-    histogram!("brightstaff_billing_talos_verify_duration_seconds").record(duration.as_secs_f64());
 }

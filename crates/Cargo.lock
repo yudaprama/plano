@@ -371,7 +371,6 @@ dependencies = [
  "serde_json",
  "serde_with",
  "serde_yaml",
- "sha2 0.11.0",
  "strsim",
  "thiserror 2.0.18",
  "tikv-jemalloc-ctl",

@@ -50,8 +50,6 @@ pub enum PipelineError {
     },
     #[error("Unauthorized: {0}")]
     Unauthorized(String),
-    #[error("Billing unavailable: {0}")]
-    BillingUnavailable(String),
 }
 
 /// Service for processing agent pipelines
