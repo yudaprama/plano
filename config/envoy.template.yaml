@@ -443,6 +443,33 @@ static_resources:
                             cluster: bright_staff
                             timeout: {{ llm_gateway_listener.timeout }}
                 http_filters:
+                  {% if ext_authz_enabled %}
+                  # Ory Oathkeeper edge: authorize the CLIENT at model ingress (:12000)
+                  # before brightstaff. ext_authz belongs on the INGRESS listener — the
+                  # :12001 egress_traffic_llm is the internal brightstaff->provider hop;
+                  # auth'ing it broke the orchestrator's classification call (404). The
+                  # client is validated here, x-arch-actor-id is injected for brightstaff.
+                  # See PLANO_AUTH_TO_ORY_PLAN.md.
+                  - name: envoy.filters.http.ext_authz
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
+                      transport_api_version: V3
+                      failure_mode_allow: false
+                      http_service:
+                        server_uri:
+                          uri: oathkeeper:4456
+                          cluster: oathkeeper
+                          timeout: 0.5s
+                        path_prefix: /decisions
+                        authorization_request:
+                          allowed_headers:
+                            patterns:
+                              - exact: authorization
+                        authorization_response:
+                          allowed_upstream_headers:
+                            patterns:
+                              - exact: x-arch-actor-id
+                  {% endif %}
                   - name: envoy.filters.http.compressor
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
@@ -560,30 +587,12 @@ static_resources:
                             body:
                               inline_string: "x-arch-llm-provider header not set, llm gateway cannot perform routing\n"
                 http_filters:
-                  {% if ext_authz_enabled %}
-                  # Ory Oathkeeper edge (Scenario B): authorize before the LLM gateway
-                  # WASM runs. Oathkeeper validates the Talos API key and injects
-                  # x-arch-actor-id; non-2xx from /decisions fails the request closed.
-                  - name: envoy.filters.http.ext_authz
-                    typed_config:
-                      "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthz
-                      transport_api_version: V3
-                      failure_mode_allow: false
-                      http_service:
-                        server_uri:
-                          uri: oathkeeper:4456
-                          cluster: oathkeeper
-                          timeout: 0.5s
-                        path_prefix: /decisions
-                        authorization_request:
-                          allowed_headers:
-                            patterns:
-                              - exact: authorization
-                        authorization_response:
-                          allowed_upstream_headers:
-                            patterns:
-                              - exact: x-arch-actor-id
-                  {% endif %}
+                  # NOTE: NO ext_authz here. egress_traffic_llm (:12001) is the INTERNAL
+                  # router-model / LLM-provider hop (LLM_PROVIDER_ENDPOINT) — the orchestrator's
+                  # classification call + the llm gateway reach providers through it via
+                  # loopback. It is already authenticated at ingress (:12000/:8001); putting
+                  # ext_authz here blocks those internal calls (orchestrator 404 "no matching
+                  # rule" for host localhost:12001). Do NOT re-add. See PLANO_AUTH_TO_ORY_PLAN.md.
                   - name: envoy.filters.http.compressor
                     typed_config:
                       "@type": type.googleapis.com/envoy.extensions.filters.http.compressor.v3.Compressor
