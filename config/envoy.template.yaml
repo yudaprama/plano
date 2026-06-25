@@ -355,12 +355,12 @@ static_resources:
                         path_prefix: /decisions
                         authorization_request:
                           allowed_headers:
-                            - patterns:
-                                - exact: authorization
+                            patterns:
+                              - exact: authorization
                         authorization_response:
                           allowed_upstream_headers:
-                            - patterns:
-                                - exact: x-arch-actor-id
+                            patterns:
+                              - exact: x-arch-actor-id
                   {% endif %}
                   - name: envoy.filters.http.compressor
                     typed_config:
@@ -577,12 +577,12 @@ static_resources:
                         path_prefix: /decisions
                         authorization_request:
                           allowed_headers:
-                            - patterns:
-                                - exact: authorization
+                            patterns:
+                              - exact: authorization
                         authorization_response:
                           allowed_upstream_headers:
-                            - patterns:
-                                - exact: x-arch-actor-id
+                            patterns:
+                              - exact: x-arch-actor-id
                   {% endif %}
                   - name: envoy.filters.http.compressor
                     typed_config:
