@@ -86,20 +86,23 @@ Code in `prompt_gateway` and `llm_gateway` runs in Envoy's WASM sandbox:
 
 ## Release Process
 
-Update version (e.g., `0.4.11` → `0.4.12`) in all of these files:
+Releases follow the **metering pattern**: push to `main` → workflow builds binaries → creates GitHub Release with `v${{ github.run_number }}` tag.
 
-- `.github/workflows/ci.yml`, `build_filter_image.sh`, `config/validate_plano_config.sh`
-- `cli/planoai/__init__.py`, `cli/planoai/consts.py`, `cli/pyproject.toml`
-- `docs/source/conf.py`, `docs/source/get_started/quickstart.rst`, `docs/source/resources/deployment.rst`
-- `apps/www/src/components/Hero.tsx`, `demos/llm_routing/preference_based_routing/README.md`
+**Workflow:** `.github/workflows/publish-binaries.yml`
+- Triggers on push to `main`
+- Builds WASM plugins (ubuntu) + brightstaff binaries (linux amd64/arm64, darwin arm64)
+- Creates release with all assets + CHECKSUMS.txt
 
-Do NOT change version strings in `*.lock` files or `Cargo.lock`. Commit message: `release X.Y.Z`
+**Disabled workflows** (manual trigger only):
+- `ci.yml`, `docker-push-main.yml`, `docker-push-release.yml`, `publish-pypi.yml`, `static.yml`
+
+**To release:** Just push to `main`. The workflow auto-creates a release at `https://github.com/yudaprama/plano/releases/tag/vN`.
+
+**Version in ai-orchestration/main.go:** Update `version` constant to match the release tag (e.g., `v13`).
 
 ## Workflow Preferences
 
-- **Commits:** No `Co-Authored-By`. Short one-line messages. Never push directly to `main` — always feature branch + PR.
-- **Branches:** Use `adil/<feature_name>` format.
-- **Issues:** When a GitHub issue URL is pasted, fetch all context first. Goal is always a PR with passing tests.
+- **Commits:** Short one-line messages. Commit directly to `main` (no feature branches).
 - **Upstream:** Do not look at or fetch the `upstream` remote (katonemo/plano) unless I explicitly ask you to. Focus only on this fork's `origin` remote.
 
 ## Key Conventions
