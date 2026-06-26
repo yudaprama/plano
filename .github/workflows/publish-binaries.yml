@@ -53,8 +53,8 @@ jobs:
         if: matrix.target != 'wasms'
         run: |
           mkdir -p dist
-          cp crates/target/release/brightstaff dist/${{ matrix.target }}.gz
-          gzip dist/${{ matrix.target }}.gz
+          cp crates/target/release/brightstaff "dist/${{ matrix.target }}"
+          gzip "dist/${{ matrix.target }}"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
