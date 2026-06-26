@@ -665,6 +665,22 @@ def validate_and_render_schema():
     # API-key auth + balance gating. Off by default (needs Oathkeeper running).
     ext_authz_enabled = bool(config_yaml.get("auth", {}).get("ext_authz_enabled", False))
 
+    # Internal loopback-only model ingress (e.g. :12010). Egents call this
+    # instead of the public :12000 to skip the per-hop Oathkeeper round-trip;
+    # trust is the 127.0.0.1 bind plus a static x-arch-internal-key header.
+    # Resolve a $ENV_VAR key reference at render time so the secret never lives
+    # in the source config.
+    internal_listener = None
+    il_cfg = config_yaml.get("auth", {}).get("internal_listener")
+    if il_cfg and il_cfg.get("enabled", False):
+        il_key = il_cfg.get("key", "") or ""
+        if isinstance(il_key, str) and il_key.startswith("$"):
+            il_key = os.environ.get(il_key[1:], "")
+        internal_listener = {
+            "port": il_cfg.get("port", 12010),
+            "key": il_key,
+        }
+
     data = {
         "prompt_gateway_listener": prompt_gateway,
         "llm_gateway_listener": llm_gateway,
@@ -679,6 +695,7 @@ def validate_and_render_schema():
         "upstream_connect_timeout": upstream_connect_timeout,
         "upstream_tls_ca_path": upstream_tls_ca_path,
         "ext_authz_enabled": ext_authz_enabled,
+        "internal_listener": internal_listener,
     }
 
     rendered = template.render(data)

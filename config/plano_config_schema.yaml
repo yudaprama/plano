@@ -522,6 +522,25 @@ properties:
         type: boolean
         default: false
         description: When true, Plano's Envoy runs an ext_authz filter on :12000/:8001 → Oathkeeper /decisions.
+      internal_listener:
+        type: object
+        description: >
+          Loopback-only internal model ingress (e.g. :12010) that egents call
+          instead of the public :12000, skipping the per-hop Oathkeeper round-trip.
+          Trust = 127.0.0.1 bind + a static key header (x-arch-internal-key).
+          The egent forwards x-arch-actor-id, which passes through to brightstaff
+          for billing. NEVER expose this port via a tunnel.
+        properties:
+          enabled:
+            type: boolean
+            default: false
+          port:
+            type: integer
+            default: 12010
+          key:
+            type: string
+            description: Static key value; supports $ENV_VAR substitution at render time.
+        additionalProperties: false
     additionalProperties: false
   prompt_guards:
     type: object
