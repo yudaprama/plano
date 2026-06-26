@@ -39,10 +39,10 @@ jobs:
         if: matrix.target == 'wasms'
         run: |
           mkdir -p dist
-          cp crates/target/wasm32-wasip1/release/prompt_gateway.wasm dist/prompt_gateway.wasm.gz
-          cp crates/target/wasm32-wasip1/release/llm_gateway.wasm dist/llm_gateway.wasm.gz
-          gzip dist/prompt_gateway.wasm.gz
-          gzip dist/llm_gateway.wasm.gz
+          cp crates/target/wasm32-wasip1/release/prompt_gateway.wasm dist/
+          cp crates/target/wasm32-wasip1/release/llm_gateway.wasm dist/
+          gzip dist/prompt_gateway.wasm
+          gzip dist/llm_gateway.wasm
 
       - name: Build brightstaff
         if: matrix.target != 'wasms'
