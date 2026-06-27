@@ -325,6 +325,18 @@ static_resources:
                     - name: local_service
                       domains:
                         - "*"
+                      # Browser CORS for the SPA calling the agent orchestrator
+                      # (:8001) cross-origin with an Authorization: Bearer header.
+                      typed_per_filter_config:
+                        envoy.filters.http.cors:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                          allow_origin_string_match:
+                            - exact: "https://studio.getkawai.com"
+                            - exact: "http://localhost:3010"
+                          allow_methods: "GET, POST, OPTIONS"
+                          allow_headers: "authorization, content-type"
+                          allow_credentials: true
+                          max_age: "86400"
                       routes:
                         - match:
                             prefix: "/healthz"
@@ -338,6 +350,11 @@ static_resources:
                             cluster: bright_staff
                             timeout: {{ listener.timeout | default('30s') }}
                 http_filters:
+                  # CORS must precede ext_authz so the preflight OPTIONS (no
+                  # Authorization header) is answered here instead of 401'd.
+                  - name: envoy.filters.http.cors
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
                   {% if ext_authz_enabled %}
                   # Ory Oathkeeper edge (Scenario B): authorize before routing to the
                   # agent. Oathkeeper validates the Talos API key and injects
@@ -431,6 +448,20 @@ static_resources:
                     - name: local_service
                       domains:
                         - "*"
+                      # Browser CORS for the SPA calling the model proxy (:12000)
+                      # cross-origin with an Authorization: Bearer <api-key> header.
+                      # The cors http_filter (below, before ext_authz) answers the
+                      # preflight OPTIONS, which carries no Authorization.
+                      typed_per_filter_config:
+                        envoy.filters.http.cors:
+                          "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
+                          allow_origin_string_match:
+                            - exact: "https://studio.getkawai.com"
+                            - exact: "http://localhost:3010"
+                          allow_methods: "GET, POST, OPTIONS"
+                          allow_headers: "authorization, content-type"
+                          allow_credentials: true
+                          max_age: "86400"
                       routes:
                         - match:
                             prefix: "/healthz"
@@ -443,6 +474,11 @@ static_resources:
                             cluster: bright_staff
                             timeout: {{ llm_gateway_listener.timeout }}
                 http_filters:
+                  # CORS must precede ext_authz so the preflight OPTIONS (no
+                  # Authorization header) is answered here instead of 401'd.
+                  - name: envoy.filters.http.cors
+                    typed_config:
+                      "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.Cors
                   {% if ext_authz_enabled %}
                   # Ory Oathkeeper edge: authorize the CLIENT at model ingress (:12000)
                   # before brightstaff. ext_authz belongs on the INGRESS listener — the
