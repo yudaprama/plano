@@ -115,7 +115,7 @@ jobs:
       # repo means find_repo_root() returns None, the local-build short-
       # circuit is skipped, and the CLI tries to download from a GitHub
       # release that does not yet exist for the in-flight version on
-      # release-bump PRs (e.g. 0.4.24 before publish-binaries has run).
+      # release-bump PRs (e.g. 0.4.26 before publish-binaries has run).
       - name: Seed ~/.plano cache for zero-config test
         run: |
           VERSION=$(sed -nE 's/^__version__ = "(.*)"$/\1/p' cli/planoai/__init__.py)
