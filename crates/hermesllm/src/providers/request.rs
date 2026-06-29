@@ -96,6 +96,16 @@ impl ProviderRequestType {
             SupportedUpstreamAPIs::OpenAIChatCompletions(_)
         ) {
             if let Self::ChatCompletionsRequest(req) = self {
+                // Make `stream` explicit. Per the OpenAI spec an absent `stream`
+                // means non-streaming, but some OpenAI-compatible upstreams
+                // default to SSE (text/event-stream) when the field is omitted.
+                // That desyncs from our `is_streaming()` decision (false here),
+                // and the SSE body is then mis-decoded ("unexpected EOF during
+                // chunk size line", 0 bytes back). Pinning the field to its
+                // spec default keeps the upstream's response shape predictable.
+                if req.stream.is_none() {
+                    req.stream = Some(false);
+                }
                 if is_kimi_code_model(req.model()) {
                     req.normalize_for_kimi_code_api();
                 }
