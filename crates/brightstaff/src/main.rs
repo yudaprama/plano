@@ -353,7 +353,16 @@ async fn init_app_state(
         llm_provider_url,
         span_attributes,
         distinct_id_header,
-        http_client: reqwest::Client::new(),
+        // Drop idle pooled connections after 2s. Upstreams like the local Node
+        // OpenAI-compatible gateway close keep-alive connections within a few
+        // seconds; reqwest's default 90s idle pool would reuse a server-closed
+        // connection, yielding "unexpected EOF during chunk size line" with 0
+        // bytes streamed back (empty 200). A 2s idle timeout keeps pooling for
+        // bursts while never reusing a connection the upstream has dropped.
+        http_client: reqwest::Client::builder()
+            .pool_idle_timeout(std::time::Duration::from_secs(2))
+            .build()
+            .expect("failed to build llm http client"),
         filter_pipeline,
         signals_enabled,
     })
