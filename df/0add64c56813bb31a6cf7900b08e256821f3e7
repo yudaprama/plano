@@ -1,0 +1,19 @@
+config/plano_config_schema.yaml
+  s_dbaab471419cd8::t_d438e535f13344 180-182,242-244
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "df0add64c56813bb31a6cf7900b08e256821f3e7",
+  "prompts": {},
+  "sessions": {
+    "s_dbaab471419cd8": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0cdb28af2ffeHy8C1gTbxyliI9",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
