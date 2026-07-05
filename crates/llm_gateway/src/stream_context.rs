@@ -31,6 +31,28 @@ use hermesllm::{
     ProviderStreamResponseType,
 };
 
+/// Pick one credential from a possibly comma-separated `access_key`.
+///
+/// Entries are trimmed and empty ones skipped. With zero or one usable entry
+/// the input is returned effectively unchanged; with several, one is chosen via
+/// `seed % len` so requests spread across the configured keys.
+fn pick_access_key(raw: &str, seed: u128) -> &str {
+    // Fast path: no comma → a single credential.
+    if !raw.contains(',') {
+        return raw.trim();
+    }
+    let keys: Vec<&str> = raw
+        .split(',')
+        .map(|k| k.trim())
+        .filter(|k| !k.is_empty())
+        .collect();
+    match keys.len() {
+        0 => raw.trim(),
+        1 => keys[0],
+        n => keys[(seed % n as u128) as usize],
+    }
+}
+
 pub struct StreamContext {
     metrics: Rc<Metrics>,
     ratelimit_selector: Option<Header>,
@@ -204,7 +226,8 @@ impl StreamContext {
                 }
             }
         } else {
-            self.llm_provider()
+            let raw = self
+                .llm_provider()
                 .access_key
                 .as_ref()
                 .ok_or(ServerError::BadRequest {
@@ -212,8 +235,18 @@ impl StreamContext {
                         "No access key configured for selected LLM Provider \"{}\"",
                         self.llm_provider()
                     ),
-                })?
-                .clone()
+                })?;
+            // Support a comma-separated list of credentials in `access_key`
+            // (e.g. Ollama's `$OLLAMA_API_KEYS`): pick one per request so load
+            // spreads across the configured keys. `rand`/`getrandom` aren't
+            // available in the WASM sandbox, so seed the choice with the host
+            // clock's nanoseconds. A single key is returned unchanged.
+            let seed = get_current_time()
+                .ok()
+                .and_then(|t| t.duration_since(UNIX_EPOCH).ok())
+                .map(|d| d.as_nanos())
+                .unwrap_or(0);
+            pick_access_key(raw, seed).to_string()
         };
 
         // Normalize the credential into whichever header the upstream expects.
@@ -1302,7 +1335,40 @@ fn extract_client_credential(
 
 #[cfg(test)]
 mod tests {
-    use super::extract_client_credential;
+    use super::{extract_client_credential, pick_access_key};
+
+    #[test]
+    fn single_access_key_returned_as_is() {
+        assert_eq!(pick_access_key("sk-only", 12345), "sk-only");
+    }
+
+    #[test]
+    fn single_access_key_is_trimmed() {
+        assert_eq!(pick_access_key("  sk-pad  ", 0), "sk-pad");
+    }
+
+    #[test]
+    fn comma_separated_keys_selected_by_seed() {
+        let raw = "k0,k1,k2";
+        assert_eq!(pick_access_key(raw, 0), "k0");
+        assert_eq!(pick_access_key(raw, 1), "k1");
+        assert_eq!(pick_access_key(raw, 2), "k2");
+        assert_eq!(pick_access_key(raw, 3), "k0");
+    }
+
+    #[test]
+    fn comma_separated_keys_are_trimmed_and_empties_skipped() {
+        // Leading/trailing whitespace and empty entries (e.g. trailing comma)
+        // should not produce a blank credential.
+        let raw = " a , , b ,";
+        assert_eq!(pick_access_key(raw, 0), "a");
+        assert_eq!(pick_access_key(raw, 1), "b");
+    }
+
+    #[test]
+    fn only_empty_entries_falls_back_to_trimmed_raw() {
+        assert_eq!(pick_access_key(" , , ", 0), ", ,");
+    }
 
     #[test]
     fn authorization_bearer_strips_prefix() {
