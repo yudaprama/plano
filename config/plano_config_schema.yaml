@@ -177,6 +177,9 @@ properties:
         passthrough_auth:
           type: boolean
           description: "When true, forwards the client's Authorization header to upstream instead of using the configured access_key. Useful for routing to services like LiteLLM that validate their own virtual keys."
+        internal:
+          type: boolean
+          description: "When true, hides this model from the /v1/models listing while keeping it routable (e.g. a backend model only reachable via a model_alias)."
         http_host:
           type: string
         provider_interface:
@@ -236,6 +239,9 @@ properties:
         passthrough_auth:
           type: boolean
           description: "When true, forwards the client's Authorization header to upstream instead of using the configured access_key. Useful for routing to services like LiteLLM that validate their own virtual keys."
+        internal:
+          type: boolean
+          description: "When true, hides this model from the /v1/models listing while keeping it routable (e.g. a backend model only reachable via a model_alias)."
         http_host:
           type: string
         provider_interface:
