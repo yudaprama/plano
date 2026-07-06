@@ -450,9 +450,14 @@ def validate_and_render_schema():
                     f"Please provide provider interface as part of model name {model_name} using the format <provider>/<model_id>. For example, use 'openai/gpt-3.5-turbo' instead of 'gpt-3.5-turbo' "
                 )
 
-            # For wildcard models, don't add model_id to the keys since it's "*"
+            # For wildcard models, don't add model_id to the keys since it's "*".
+            # When a provider has a custom base_url, multiple accounts can share the
+            # same model_id (e.g. 8 Cloudflare accounts all serving granite-4.0-h-micro);
+            # each is uniquely identified by its full model_name so the model_id
+            # uniqueness check is skipped in that case.
             if not is_wildcard:
-                if model_id in model_name_keys:
+                has_custom_base_url = model_provider.get("base_url") is not None
+                if model_id in model_name_keys and not has_custom_base_url:
                     raise Exception(
                         f"Duplicate model_id {model_id}, please provide unique model_id for each model_provider"
                     )
@@ -621,15 +626,29 @@ def validate_and_render_schema():
                         f"which is not defined in agents or filters. Available ids: {', '.join(sorted(agent_id_keys))}"
                     )
 
-    # Validate model aliases if present
+    # Validate model aliases if present. An alias may declare a single `target`
+    # (string, backward-compatible) or a `targets` pool (list); brightstaff picks
+    # a healthy one per request and fails over on 429/5xx. Every candidate from
+    # either form must resolve to a defined model.
     if "model_aliases" in config_yaml:
         model_aliases = config_yaml["model_aliases"]
         for alias_name, alias_config in model_aliases.items():
-            target = alias_config.get("target")
-            if target not in model_name_keys:
+            candidates = []
+            single = alias_config.get("target")
+            if single:
+                candidates.append(single)
+            for t in alias_config.get("targets") or []:
+                if t:
+                    candidates.append(t)
+            if not candidates:
                 raise Exception(
-                    f"Model alias 2 - '{alias_name}' targets '{target}' which is not defined as a model. Available models: {', '.join(sorted(model_name_keys))}"
+                    f"Model alias '{alias_name}' has no 'target' or 'targets' defined."
                 )
+            for target in candidates:
+                if target not in model_name_keys:
+                    raise Exception(
+                        f"Model alias '{alias_name}' targets '{target}' which is not defined as a model. Available models: {', '.join(sorted(model_name_keys))}"
+                    )
 
     plano_config_string = yaml.dump(config_yaml)
     plano_llm_config_string = yaml.dump(config_yaml)

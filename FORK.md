@@ -32,6 +32,8 @@ These commits are on the fork's `main` but not in `upstream/main` (as of
 | `3a0f8ee9` | README + docs index entry for the billing guide                                |
 | `ccf1af2a` | Merge of the latest `upstream/main`                                            |
 | `acba49fb` | Multi-key `access_key` (comma-separated credentials, one picked per request)   |
+| `7a3ec4d6` | Multi-target model aliases with health-aware failover (429/5xx cooldown)       |
+| `a4df5492` | Schema `anyOf` for `target`/`targets` + `cargo fmt` pass                       |
 
 ### 1. Billing flow (`38242491`)
 
@@ -131,6 +133,58 @@ per key (e.g. Ollama Cloud's `$OLLAMA_API_KEYS`).
   the comma-separated env value lands verbatim in `access_key` before Plano
   splits it.
 
+### 6. Multi-target model aliases with health-aware failover (`7a3ec4d6`)
+
+A `model_aliases` entry may now list **multiple backend targets**. When more
+than one is configured, brightstaff picks a healthy one per request and
+automatically fails over to the next on a retryable upstream error (`429`,
+`500`, `502`, `503`, `504`) or a connection error.
+
+```yaml
+model_aliases:
+  kawai-pro-max:
+    targets:
+      - openai/gpt-4o
+      - openai/gpt-4.1
+      - anthropic/claude-3-7-sonnet  # NB: same provider_interface assumed
+```
+
+The single-target form is still supported (backward-compatible):
+
+```yaml
+model_aliases:
+  kawai-pro-max:
+    target: openai/gpt-4o
+```
+
+- Implemented in `crates/common/src/configuration.rs` (`ModelAlias::candidates`,
+  `ModelAlias::primary`) and `crates/brightstaff/src/handlers/llm/mod.rs`
+  (`resolve_alias_candidates`, the new attempt loop in `send_upstream`).
+- Health tracking lives in `crates/brightstaff/src/handlers/llm/health.rs`
+  (`ModelHealthTracker`): an in-memory, process-local `HashMap<model, cooldown>`.
+  - Default cooldown **30 s**; capped at **300 s** so a hostile `Retry-After`
+    can't park a backend indefinitely.
+  - `Retry-After` is honored when it's an integer-seconds value; the HTTP-date
+    form is **not** parsed (falls back to the default).
+  - Candidates are partitioned into available-first (shuffled for load
+    spreading) then cooled-down (shuffled as a last resort), so a request
+    never hard-fails just because every backend is in cooldown.
+  - A non-retryable response (incl. `4xx`) clears the cooldown for that backend.
+- Interaction with the orchestrator/router: when the router explicitly selects
+  a model (route override) or a session has a pinned decision, that single
+  model is honored and **no** alias-level health fallback is attempted.
+- Config schema (`config/plano_config_schema.yaml`) uses `anyOf` so either
+  `target` or `targets` is accepted; `additionalProperties: false` is preserved.
+
+Caveats:
+
+- **In-memory and per-process.** Cooldown state is not shared across replicas
+  (each replica learns independently). No persistence.
+- **Same `provider_interface` assumed.** The request body is normalized once
+  for the primary candidate, so all `targets` must share a provider interface
+  (e.g. all OpenAI-compatible). This is documented in the struct but **not
+  enforced in code** — mixing interfaces will silently misbehave.
+
 ## Known concerns (carried forward from `cf0fd509`)
 
 These are documented in the commit body but not yet fixed:
@@ -165,6 +219,7 @@ fallbacks.
 ## Things that did NOT change
 
 The WASM plugins (`prompt_gateway`, `llm_gateway`), the `hermesllm` crate,
-the Envoy template, and the core `brightstaff` LLM proxy flow are
-upstream-identical. The fork only adds the billing module on top of
-`brightstaff` and patches the release workflows.
+and the Envoy template are upstream-identical. The fork adds the billing
+module on top of `brightstaff`, patches the release workflows, and (since
+`7a3ec4d6`) extends `brightstaff`'s LLM proxy flow with multi-target alias
+routing and health-aware failover.
