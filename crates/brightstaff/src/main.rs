@@ -365,6 +365,7 @@ async fn init_app_state(
             .expect("failed to build llm http client"),
         filter_pipeline,
         signals_enabled,
+        exposed_models: config.exposed_models.clone(),
     })
 }
 
@@ -556,7 +557,7 @@ async fn dispatch(
                 .await
         }
         (&Method::GET, "/v1/models" | "/agents/v1/models") => {
-            Ok(list_models(Arc::clone(&state.llm_providers)).await)
+            Ok(list_models(Arc::clone(&state.llm_providers), state.exposed_models.as_ref()).await)
         }
         (&Method::OPTIONS, "/v1/models" | "/agents/v1/models") => cors_preflight(),
         (&Method::GET, "/debug/memstats") => debug::memstats().await,

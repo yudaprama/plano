@@ -210,6 +210,20 @@ pub enum LatencyProvider {
     Prometheus,
 }
 
+/// A single entry in the `exposed_models` list — returned as-is by GET /v1/models.
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct ExposedModel {
+    pub id: String,
+    #[serde(default = "ExposedModel::default_owned_by")]
+    pub owned_by: String,
+}
+
+impl ExposedModel {
+    fn default_owned_by() -> String {
+        "kawai".to_string()
+    }
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct Configuration {
     pub version: String,
@@ -231,6 +245,9 @@ pub struct Configuration {
     pub state_storage: Option<StateStorageConfig>,
     pub routing_preferences: Option<Vec<TopLevelRoutingPreference>>,
     pub model_metrics_sources: Option<Vec<MetricsSource>>,
+    /// When set, GET /v1/models returns this list instead of deriving from model_providers.
+    /// Use to expose branded model names without revealing backend provider details.
+    pub exposed_models: Option<Vec<ExposedModel>>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, Default)]

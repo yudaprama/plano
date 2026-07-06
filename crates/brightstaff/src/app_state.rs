@@ -1,7 +1,7 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use common::configuration::{Agent, FilterPipeline, Listener, ModelAlias, SpanAttributes};
+use common::configuration::{Agent, ExposedModel, FilterPipeline, Listener, ModelAlias, SpanAttributes};
 use common::llm_providers::LlmProviders;
 use tokio::sync::RwLock;
 
@@ -31,4 +31,6 @@ pub struct AppState {
     /// When false, agentic signal analysis is skipped on LLM responses to save CPU.
     /// Controlled by `overrides.disable_signals` in plano config.
     pub signals_enabled: bool,
+    /// When set, GET /v1/models returns this list instead of deriving from model_providers.
+    pub exposed_models: Option<Vec<ExposedModel>>,
 }
