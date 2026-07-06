@@ -31,6 +31,7 @@ These commits are on the fork's `main` but not in `upstream/main` (as of
 | `cf0fd509` | Bugs / correctness concerns (hardening for the billing flow)                   |
 | `3a0f8ee9` | README + docs index entry for the billing guide                                |
 | `ccf1af2a` | Merge of the latest `upstream/main`                                            |
+| `acba49fb` | Multi-key `access_key` (comma-separated credentials, one picked per request)   |
 
 ### 1. Billing flow (`38242491`)
 
@@ -103,6 +104,32 @@ defaults. To point the CLI at the fork's images, set:
 export PLANO_GITHUB_REPO=yudaprama/plano
 export PLANO_DOCKER_IMAGE=ghcr.io/yudaprama/plano:0.5.7
 ```
+
+### 5. Multi-key `access_key` (`acba49fb`)
+
+A provider's `access_key` may be a **comma-separated list** of credentials
+instead of a single key. When several are configured, Plano picks one per
+request so load spreads across the keys — handy for upstreams that rate-limit
+per key (e.g. Ollama Cloud's `$OLLAMA_API_KEYS`).
+
+```yaml
+- model: ollama/gpt-oss:120b
+  provider_interface: openai
+  access_key: $OLLAMA_API_KEYS   # OLLAMA_API_KEYS="k1,k2,k3"
+```
+
+- Implemented in `crates/llm_gateway/src/stream_context.rs` (`pick_access_key`),
+  at the point the upstream credential is resolved. A single key (no comma) is
+  forwarded unchanged (whitespace trimmed).
+- Selection is **random per request**, not strict round-robin: the choice is
+  seeded from the host clock's nanoseconds via the proxy-wasm `get_current_time`
+  hostcall, because `rand`/`getrandom` are unavailable in the WASM sandbox.
+  Over many requests the keys are hit roughly evenly, but consecutive requests
+  can repeat a key.
+- Entries are trimmed and empty ones (e.g. a trailing comma) are skipped.
+- Env expansion happens at config-render time (planoctl `expandEnvWithMap`), so
+  the comma-separated env value lands verbatim in `access_key` before Plano
+  splits it.
 
 ## Known concerns (carried forward from `cf0fd509`)
 

@@ -37,7 +37,42 @@ pub struct Routing {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct ModelAlias {
-    pub target: String,
+    /// Single backend target (backward-compatible form).
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub target: Option<String>,
+    /// Multiple backend targets. When more than one candidate is present,
+    /// brightstaff picks a healthy one per request (shuffled for load
+    /// spreading) and skips any currently in 429/5xx cooldown. All candidates
+    /// must share the same `provider_interface` (e.g. all OpenAI-compatible),
+    /// since the request body is normalized once for the primary provider.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub targets: Option<Vec<String>>,
+}
+
+impl ModelAlias {
+    /// All backend candidates for this alias (`target` first, then `targets`),
+    /// de-duplicated while preserving order.
+    pub fn candidates(&self) -> Vec<String> {
+        let mut out: Vec<String> = Vec::new();
+        if let Some(t) = self.target.as_ref() {
+            if !t.is_empty() {
+                out.push(t.clone());
+            }
+        }
+        if let Some(ts) = self.targets.as_ref() {
+            for t in ts {
+                if !t.is_empty() && !out.contains(t) {
+                    out.push(t.clone());
+                }
+            }
+        }
+        out
+    }
+
+    /// The primary backend (first candidate), if any.
+    pub fn primary(&self) -> Option<String> {
+        self.candidates().into_iter().next()
+    }
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

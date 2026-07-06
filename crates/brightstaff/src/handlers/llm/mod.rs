@@ -18,7 +18,10 @@ use std::sync::Arc;
 use tokio::sync::RwLock;
 use tracing::{debug, info, info_span, warn, Instrument};
 
+pub mod health;
 pub(crate) mod model_selection;
+
+use health::ModelHealthTracker;
 
 use crate::app_state::AppState;
 use crate::handlers::agents::pipeline::PipelineProcessor;
@@ -162,6 +165,7 @@ async fn llm_chat_inner(
         &request_path,
         &state.model_aliases,
         &state.llm_providers,
+        &state.model_health,
         state.signals_enabled,
     )
     .await
@@ -175,7 +179,7 @@ async fn llm_chat_inner(
         chat_request_bytes,
         model_from_request,
         alias_resolved_model,
-        model_name_only,
+        alias_candidates,
         is_streaming_request,
         is_responses_api_client,
         messages_for_signals,
@@ -301,26 +305,25 @@ async fn llm_chat_inner(
         Err(response) => return Ok(response),
     };
 
-    // Serialize request for upstream BEFORE router consumes it
-    let client_request_bytes_for_upstream: Bytes =
-        match ProviderRequestType::to_bytes(&client_request) {
-            Ok(bytes) => bytes.into(),
-            Err(err) => {
-                warn!(error = %err, "failed to serialize request for upstream");
-                let mut r = Response::new(full(format!("Failed to serialize request: {}", err)));
-                *r.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-                return Ok(r);
-            }
-        };
+    // Snapshot the fully-normalized request BEFORE the router consumes it. Used
+    // as the template for each upstream attempt: send_upstream re-stamps the
+    // `model` field per candidate and re-serializes on retry.
+    let request_template = client_request.clone();
 
     // --- Phase 3: Route the request (or use pinned model from session cache) ---
-    let resolved_model = if let Some(cached_model) = pinned_model {
+    // Produces the primary model plus the ordered candidate list send_upstream
+    // will try. Pinned/router-selected models yield a single candidate; the
+    // alias path yields the health-ordered multi-target list.
+    let (resolved_model, upstream_candidates): (String, Vec<String>) = if let Some(cached_model) =
+        pinned_model
+    {
         info!(
             session_id = %session_id.as_deref().unwrap_or(""),
             model = %cached_model,
             "using pinned routing decision from cache"
         );
-        cached_model
+        let cands = vec![cached_model.clone()];
+        (cached_model, cands)
     } else {
         let routing_span = info_span!(
             "routing",
@@ -356,10 +359,19 @@ async fn llm_chat_inner(
 
         let (router_selected_model, route_name) =
             (routing_result.model_name, routing_result.route_name);
-        let model = if router_selected_model != "none" {
+        let route_overrode = router_selected_model != "none";
+        let model = if route_overrode {
             router_selected_model
         } else {
             alias_resolved_model.clone()
+        };
+        // When the orchestrator picked a specific model, honor exactly that (no
+        // alias-level health fallback). Otherwise use the health-ordered alias
+        // candidates so a rate-limited backend is skipped.
+        let cands = if route_overrode || alias_candidates.is_empty() {
+            vec![model.clone()]
+        } else {
+            alias_candidates.clone()
         };
 
         // Record route name on the LLM span (only when the orchestrator produced one).
@@ -381,7 +393,7 @@ async fn llm_chat_inner(
                 .await;
         }
 
-        model
+        (model, cands)
     };
     tracing::Span::current().record(tracing_llm::MODEL_NAME, resolved_model.as_str());
 
@@ -413,11 +425,11 @@ async fn llm_chat_inner(
         &state.http_client,
         &full_qualified_llm_provider_url,
         &mut request_headers,
-        client_request_bytes_for_upstream,
+        request_template,
+        upstream_candidates,
+        Arc::clone(&state.model_health),
         &model_from_request,
         &alias_resolved_model,
-        &resolved_model,
-        &model_name_only,
         &request_path,
         is_streaming_request,
         messages_for_signals,
@@ -440,7 +452,10 @@ struct PreparedRequest {
     chat_request_bytes: Bytes,
     model_from_request: String,
     alias_resolved_model: String,
-    model_name_only: String,
+    /// Health-ordered backend candidates for the resolved alias. Length 1 for a
+    /// plain model or single-target alias; longer for a multi-target alias.
+    /// Candidate 0 is the primary (already stamped on `client_request`).
+    alias_candidates: Vec<String>,
     is_streaming_request: bool,
     is_responses_api_client: bool,
     messages_for_signals: Option<Vec<Message>>,
@@ -460,6 +475,7 @@ async fn parse_and_validate_request(
     request_path: &str,
     model_aliases: &Option<HashMap<String, ModelAlias>>,
     llm_providers: &Arc<RwLock<LlmProviders>>,
+    model_health: &ModelHealthTracker,
     signals_enabled: bool,
 ) -> Result<PreparedRequest, Response<BoxBody<Bytes, hyper::Error>>> {
     let raw_bytes = request
@@ -508,25 +524,35 @@ async fn parse_and_validate_request(
     let model_from_request = client_request.model().to_string();
     let temperature = client_request.get_temperature();
     let is_streaming_request = client_request.is_streaming();
-    let alias_resolved_model = resolve_model_alias(&model_from_request, model_aliases);
-    let (provider_id, _, _) = get_provider_info(llm_providers, &alias_resolved_model).await;
 
-    // Validate model exists in configuration
-    if llm_providers
-        .read()
-        .await
-        .get(&alias_resolved_model)
-        .is_none()
-    {
-        let err_msg = format!(
-            "Model '{}' not found in configured providers",
-            alias_resolved_model
-        );
-        warn!(model = %alias_resolved_model, "model not found in configured providers");
+    // Resolve the alias to its full backend candidate list, then keep only those
+    // that actually exist in configuration. Order by health so a currently
+    // rate-limited/erroring backend is tried last (or not at all).
+    let raw_candidates = resolve_alias_candidates(&model_from_request, model_aliases);
+    let existing_candidates: Vec<String> = {
+        let providers = llm_providers.read().await;
+        raw_candidates
+            .into_iter()
+            .filter(|m| providers.get(m).is_some())
+            .collect()
+    };
+    if existing_candidates.is_empty() {
+        // Fall back to the primary for a precise error message.
+        let primary = resolve_model_alias(&model_from_request, model_aliases);
+        let err_msg = format!("Model '{}' not found in configured providers", primary);
+        warn!(model = %primary, "model not found in configured providers");
         let mut r = Response::new(full(err_msg));
         *r.status_mut() = StatusCode::BAD_REQUEST;
         return Err(r);
     }
+    let alias_candidates = model_health.order_candidates(&existing_candidates);
+    // Primary = the health-preferred candidate; drives normalization, routing,
+    // and the request body's initial model field.
+    let alias_resolved_model = alias_candidates
+        .first()
+        .cloned()
+        .unwrap_or_else(|| model_from_request.clone());
+    let (provider_id, _, _) = get_provider_info(llm_providers, &alias_resolved_model).await;
 
     // Strip provider prefix for upstream (e.g. "openai/gpt-4" → "gpt-4")
     let model_name_only = alias_resolved_model
@@ -559,7 +585,7 @@ async fn parse_and_validate_request(
         chat_request_bytes,
         model_from_request,
         alias_resolved_model,
-        model_name_only,
+        alias_candidates,
         is_streaming_request,
         is_responses_api_client,
         messages_for_signals,
@@ -691,11 +717,11 @@ async fn send_upstream(
     http_client: &reqwest::Client,
     upstream_url: &str,
     request_headers: &mut hyper::HeaderMap,
-    body: bytes::Bytes,
+    request_template: ProviderRequestType,
+    candidates: Vec<String>,
+    model_health: Arc<ModelHealthTracker>,
     model_from_request: &str,
     alias_resolved_model: &str,
-    resolved_model: &str,
-    model_name_only: &str,
     request_path: &str,
     is_streaming_request: bool,
     messages_for_signals: Option<Vec<Message>>,
@@ -705,6 +731,129 @@ async fn send_upstream(
     filter_pipeline: &Arc<FilterPipeline>,
     actor_id: Option<String>,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
+    // Headers shared across every attempt (streaming flag + trace context).
+    request_headers.insert(
+        header::HeaderName::from_static(ARCH_IS_STREAMING_HEADER),
+        header::HeaderValue::from_static(if is_streaming_request {
+            "true"
+        } else {
+            "false"
+        }),
+    );
+    request_headers.remove(header::CONTENT_LENGTH);
+    // Inject current span's trace context so upstream spans are children of plano(llm)
+    global::get_text_map_propagator(|propagator| {
+        let cx = tracing_opentelemetry::OpenTelemetrySpanExt::context(&tracing::Span::current());
+        propagator.inject_context(&cx, &mut HeaderInjector(request_headers));
+    });
+
+    // Attempt loop: try each candidate in the (health-ordered) list, skipping to
+    // the next on a retryable status (429/5xx) or a connection error, and mark
+    // the failed backend unhealthy so subsequent requests avoid it. The winning
+    // (or last) response falls through to the streaming/response-processing path.
+    let (llm_response, resolved_model, request_start_time) = {
+        let mut iter = candidates.iter().peekable();
+        loop {
+            let Some(candidate) = iter.next() else {
+                // Empty candidate list — should never happen (validated upstream).
+                let mut r = Response::new(full("No upstream model candidates available"));
+                *r.status_mut() = StatusCode::SERVICE_UNAVAILABLE;
+                return Ok(r);
+            };
+            let is_last = iter.peek().is_none();
+
+            let name_only = candidate
+                .split_once('/')
+                .map(|(_, m)| m.to_string())
+                .unwrap_or_else(|| candidate.clone());
+
+            // Re-stamp the model field for this candidate and re-serialize.
+            let mut req = request_template.clone();
+            req.set_model(name_only.clone());
+            let body: Bytes = match ProviderRequestType::to_bytes(&req) {
+                Ok(bytes) => bytes.into(),
+                Err(err) => {
+                    warn!(error = %err, "failed to serialize request for upstream");
+                    let mut r =
+                        Response::new(full(format!("Failed to serialize request: {}", err)));
+                    *r.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                    return Ok(r);
+                }
+            };
+
+            // Provider hint drives cluster + credential selection in the WASM gateway.
+            if let Ok(val) = header::HeaderValue::from_str(candidate) {
+                request_headers.insert(ARCH_PROVIDER_HINT_HEADER, val);
+            }
+
+            debug!(
+                url = %upstream_url,
+                provider_hint = %candidate,
+                upstream_model = %name_only,
+                "Routing to upstream"
+            );
+
+            let (metric_provider_raw, metric_model_raw) =
+                bs_metrics::split_provider_model(candidate);
+            let metric_provider = metric_provider_raw.to_string();
+            let metric_model = metric_model_raw.to_string();
+
+            let attempt_start = std::time::Instant::now();
+            match http_client
+                .post(upstream_url)
+                .headers(request_headers.clone())
+                .body(body)
+                .send()
+                .await
+            {
+                Ok(res) => {
+                    let status = res.status();
+                    if is_retryable_status(status) {
+                        model_health.mark_unhealthy(candidate, retry_after_duration(res.headers()));
+                        if !is_last {
+                            // Discarded attempt — record its metric here since the
+                            // downstream processor only sees the winning response.
+                            bs_metrics::record_llm_upstream(
+                                &metric_provider,
+                                &metric_model,
+                                status.as_u16(),
+                                "upstream_error",
+                                attempt_start.elapsed(),
+                            );
+                            warn!(model = %candidate, status = %status, "upstream returned retryable status, trying next candidate");
+                            continue;
+                        }
+                        warn!(model = %candidate, status = %status, "upstream returned retryable status, no more candidates");
+                    } else {
+                        // Success or non-retryable client error — clear cooldown.
+                        model_health.mark_healthy(candidate);
+                    }
+                    break (res, candidate.clone(), attempt_start);
+                }
+                Err(err) => {
+                    let err_class = bs_metrics::llm_error_class_from_reqwest(&err);
+                    bs_metrics::record_llm_upstream(
+                        &metric_provider,
+                        &metric_model,
+                        0,
+                        err_class,
+                        attempt_start.elapsed(),
+                    );
+                    model_health.mark_unhealthy(candidate, None);
+                    if !is_last {
+                        warn!(model = %candidate, error = %err, "upstream send failed, trying next candidate");
+                        continue;
+                    }
+                    let err_msg = format!("Failed to send request: {}", err);
+                    let mut internal_error = Response::new(full(err_msg));
+                    *internal_error.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
+                    return Ok(internal_error);
+                }
+            }
+        }
+    };
+    let resolved_model = resolved_model.as_str();
+
     let span_name = if model_from_request == resolved_model {
         format!("POST {} {}", request_path, resolved_model)
     } else {
@@ -717,64 +866,11 @@ async fn send_upstream(
         span.update_name(span_name.clone());
     });
 
-    debug!(
-        url = %upstream_url,
-        provider_hint = %resolved_model,
-        upstream_model = %model_name_only,
-        "Routing to upstream"
-    );
-
-    if let Ok(val) = header::HeaderValue::from_str(resolved_model) {
-        request_headers.insert(ARCH_PROVIDER_HINT_HEADER, val);
-    }
-    request_headers.insert(
-        header::HeaderName::from_static(ARCH_IS_STREAMING_HEADER),
-        header::HeaderValue::from_static(if is_streaming_request {
-            "true"
-        } else {
-            "false"
-        }),
-    );
-    request_headers.remove(header::CONTENT_LENGTH);
-
-    // Inject current span's trace context so upstream spans are children of plano(llm)
-    global::get_text_map_propagator(|propagator| {
-        let cx = tracing_opentelemetry::OpenTelemetrySpanExt::context(&tracing::Span::current());
-        propagator.inject_context(&cx, &mut HeaderInjector(request_headers));
-    });
-
-    let request_start_time = std::time::Instant::now();
-
-    // Labels for LLM upstream metrics. We prefer `resolved_model` (post-routing)
-    // and derive the provider from its `provider/model` prefix. This matches the
-    // same model id the cost/latency router keys off.
+    // Labels for LLM upstream metrics, derived from the chosen model's
+    // `provider/model` prefix (matches the id the cost/latency router keys off).
     let (metric_provider_raw, metric_model_raw) = bs_metrics::split_provider_model(resolved_model);
     let metric_provider = metric_provider_raw.to_string();
     let metric_model = metric_model_raw.to_string();
-
-    let llm_response = match http_client
-        .post(upstream_url)
-        .headers(request_headers.clone())
-        .body(body)
-        .send()
-        .await
-    {
-        Ok(res) => res,
-        Err(err) => {
-            let err_class = bs_metrics::llm_error_class_from_reqwest(&err);
-            bs_metrics::record_llm_upstream(
-                &metric_provider,
-                &metric_model,
-                0,
-                err_class,
-                request_start_time.elapsed(),
-            );
-            let err_msg = format!("Failed to send request: {}", err);
-            let mut internal_error = Response::new(full(err_msg));
-            *internal_error.status_mut() = StatusCode::INTERNAL_SERVER_ERROR;
-            return Ok(internal_error);
-        }
-    };
 
     // Propagate upstream headers and status
     let response_headers = llm_response.headers().clone();
@@ -899,22 +995,53 @@ async fn send_upstream(
 // Helpers
 // ---------------------------------------------------------------------------
 
-/// Resolves model aliases by looking up the requested model in the model_aliases map.
-/// Returns the target model if an alias is found, otherwise returns the original model.
+/// Resolves the full candidate list for a requested model. If the model matches
+/// an alias, returns the alias' backend candidates (`target` + `targets`);
+/// otherwise returns the requested model as the single candidate.
+fn resolve_alias_candidates(
+    model_from_request: &str,
+    model_aliases: &Option<HashMap<String, ModelAlias>>,
+) -> Vec<String> {
+    if let Some(aliases) = model_aliases.as_ref() {
+        if let Some(model_alias) = aliases.get(model_from_request) {
+            let candidates = model_alias.candidates();
+            if !candidates.is_empty() {
+                debug!(
+                    "Model Alias: 'From {}' -> candidates {:?}",
+                    model_from_request, candidates
+                );
+                return candidates;
+            }
+        }
+    }
+    vec![model_from_request.to_string()]
+}
+
+/// Resolves a model alias to its primary backend model (first candidate).
+/// Returns the requested model unchanged when no alias matches.
 fn resolve_model_alias(
     model_from_request: &str,
     model_aliases: &Option<HashMap<String, ModelAlias>>,
 ) -> String {
-    if let Some(aliases) = model_aliases.as_ref() {
-        if let Some(model_alias) = aliases.get(model_from_request) {
-            debug!(
-                "Model Alias: 'From {}' -> 'To {}'",
-                model_from_request, model_alias.target
-            );
-            return model_alias.target.clone();
-        }
-    }
-    model_from_request.to_string()
+    resolve_alias_candidates(model_from_request, model_aliases)
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| model_from_request.to_string())
+}
+
+/// Whether an upstream HTTP status should trigger trying the next candidate.
+fn is_retryable_status(status: StatusCode) -> bool {
+    matches!(status.as_u16(), 429 | 500 | 502 | 503 | 504)
+}
+
+/// Parse an integer-seconds `Retry-After` header into a cooldown duration.
+/// HTTP-date form is not parsed (falls back to the tracker default).
+fn retry_after_duration(headers: &reqwest::header::HeaderMap) -> Option<std::time::Duration> {
+    headers
+        .get(reqwest::header::RETRY_AFTER)
+        .and_then(|v| v.to_str().ok())
+        .and_then(|s| s.trim().parse::<u64>().ok())
+        .map(std::time::Duration::from_secs)
 }
 
 /// Calculates the upstream path for the provider based on the model name.

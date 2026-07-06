@@ -5,6 +5,7 @@ use common::configuration::{Agent, ExposedModel, FilterPipeline, Listener, Model
 use common::llm_providers::LlmProviders;
 use tokio::sync::RwLock;
 
+use crate::handlers::llm::health::ModelHealthTracker;
 use crate::router::orchestrator::OrchestratorService;
 use crate::state::StateStorage;
 
@@ -33,4 +34,7 @@ pub struct AppState {
     pub signals_enabled: bool,
     /// When set, GET /v1/models returns this list instead of deriving from model_providers.
     pub exposed_models: Option<Vec<ExposedModel>>,
+    /// Tracks recent 429/5xx per backend so multi-target aliases steer new
+    /// requests toward healthy backends (in-memory, process-local).
+    pub model_health: Arc<ModelHealthTracker>,
 }

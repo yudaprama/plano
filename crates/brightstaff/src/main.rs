@@ -366,6 +366,7 @@ async fn init_app_state(
         filter_pipeline,
         signals_enabled,
         exposed_models: config.exposed_models.clone(),
+        model_health: Arc::new(brightstaff::handlers::llm::health::ModelHealthTracker::default()),
     })
 }
 
