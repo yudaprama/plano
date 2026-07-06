@@ -6,22 +6,21 @@ use std::sync::Arc;
 
 use super::full;
 
-pub async fn list_models(
-    llm_providers: Arc<tokio::sync::RwLock<LlmProviders>>,
-) -> Response<BoxBody<Bytes, hyper::Error>> {
-    let prov = llm_providers.read().await;
-    let models = prov.to_models();
+// Branded model list returned to API clients. Backend providers (zai-coding,
+// venice, openrouter, ollama) are intentionally hidden — clients use the
+// kawai-* aliases which route to the appropriate backend via model_aliases.
+const KAWAI_MODELS_JSON: &str = r#"{"object":"list","data":[
+  {"id":"kawai-auto","object":"model","created":0,"owned_by":"kawai"},
+  {"id":"kawai-pro-max","object":"model","created":0,"owned_by":"kawai"},
+  {"id":"kawai-flash","object":"model","created":0,"owned_by":"kawai"}
+]}"#;
 
-    match serde_json::to_string(&models) {
-        Ok(json) => Response::builder()
-            .status(StatusCode::OK)
-            .header("Content-Type", "application/json")
-            .body(full(json))
-            .unwrap(),
-        Err(_) => Response::builder()
-            .status(StatusCode::INTERNAL_SERVER_ERROR)
-            .header("Content-Type", "application/json")
-            .body(full("{\"error\":\"Failed to serialize models\"}"))
-            .unwrap(),
-    }
+pub async fn list_models(
+    _llm_providers: Arc<tokio::sync::RwLock<LlmProviders>>,
+) -> Response<BoxBody<Bytes, hyper::Error>> {
+    Response::builder()
+        .status(StatusCode::OK)
+        .header("Content-Type", "application/json")
+        .body(full(KAWAI_MODELS_JSON.to_string()))
+        .unwrap()
 }
