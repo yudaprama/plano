@@ -30,11 +30,13 @@ pub async fn list_models(
         let prov = llm_providers.read().await;
         match serde_json::to_string(&prov.to_models()) {
             Ok(j) => j,
-            Err(_) => return Response::builder()
-                .status(StatusCode::INTERNAL_SERVER_ERROR)
-                .header("Content-Type", "application/json")
-                .body(full("{\"error\":\"Failed to serialize models\"}"))
-                .unwrap(),
+            Err(_) => {
+                return Response::builder()
+                    .status(StatusCode::INTERNAL_SERVER_ERROR)
+                    .header("Content-Type", "application/json")
+                    .body(full("{\"error\":\"Failed to serialize models\"}"))
+                    .unwrap()
+            }
         }
     };
 

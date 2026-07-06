@@ -1,7 +1,9 @@
 use std::collections::HashMap;
 use std::sync::Arc;
 
-use common::configuration::{Agent, ExposedModel, FilterPipeline, Listener, ModelAlias, SpanAttributes};
+use common::configuration::{
+    Agent, ExposedModel, FilterPipeline, Listener, ModelAlias, SpanAttributes,
+};
 use common::llm_providers::LlmProviders;
 use tokio::sync::RwLock;
 

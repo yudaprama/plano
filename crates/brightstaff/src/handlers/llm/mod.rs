@@ -314,87 +314,86 @@ async fn llm_chat_inner(
     // Produces the primary model plus the ordered candidate list send_upstream
     // will try. Pinned/router-selected models yield a single candidate; the
     // alias path yields the health-ordered multi-target list.
-    let (resolved_model, upstream_candidates): (String, Vec<String>) = if let Some(cached_model) =
-        pinned_model
-    {
-        info!(
-            session_id = %session_id.as_deref().unwrap_or(""),
-            model = %cached_model,
-            "using pinned routing decision from cache"
-        );
-        let cands = vec![cached_model.clone()];
-        (cached_model, cands)
-    } else {
-        let routing_span = info_span!(
-            "routing",
-            component = "routing",
-            http.method = "POST",
-            http.target = %request_path,
-            model.requested = %model_from_request,
-            model.alias_resolved = %alias_resolved_model,
-            route.selected_model = tracing::field::Empty,
-            routing.determination_ms = tracing::field::Empty,
-        );
-        let routing_result = match async {
-            set_service_name(operation_component::ROUTING);
-            router_chat_get_upstream_model(
-                Arc::clone(&state.orchestrator_service),
-                client_request,
-                &request_path,
-                &request_id,
-                inline_routing_preferences,
-            )
+    let (resolved_model, upstream_candidates): (String, Vec<String>) =
+        if let Some(cached_model) = pinned_model {
+            info!(
+                session_id = %session_id.as_deref().unwrap_or(""),
+                model = %cached_model,
+                "using pinned routing decision from cache"
+            );
+            let cands = vec![cached_model.clone()];
+            (cached_model, cands)
+        } else {
+            let routing_span = info_span!(
+                "routing",
+                component = "routing",
+                http.method = "POST",
+                http.target = %request_path,
+                model.requested = %model_from_request,
+                model.alias_resolved = %alias_resolved_model,
+                route.selected_model = tracing::field::Empty,
+                routing.determination_ms = tracing::field::Empty,
+            );
+            let routing_result = match async {
+                set_service_name(operation_component::ROUTING);
+                router_chat_get_upstream_model(
+                    Arc::clone(&state.orchestrator_service),
+                    client_request,
+                    &request_path,
+                    &request_id,
+                    inline_routing_preferences,
+                )
+                .await
+            }
+            .instrument(routing_span)
             .await
-        }
-        .instrument(routing_span)
-        .await
-        {
-            Ok(result) => result,
-            Err(err) => {
-                let mut internal_error = Response::new(full(err.message));
-                *internal_error.status_mut() = err.status_code;
-                return Ok(internal_error);
+            {
+                Ok(result) => result,
+                Err(err) => {
+                    let mut internal_error = Response::new(full(err.message));
+                    *internal_error.status_mut() = err.status_code;
+                    return Ok(internal_error);
+                }
+            };
+
+            let (router_selected_model, route_name) =
+                (routing_result.model_name, routing_result.route_name);
+            let route_overrode = router_selected_model != "none";
+            let model = if route_overrode {
+                router_selected_model
+            } else {
+                alias_resolved_model.clone()
+            };
+            // When the orchestrator picked a specific model, honor exactly that (no
+            // alias-level health fallback). Otherwise use the health-ordered alias
+            // candidates so a rate-limited backend is skipped.
+            let cands = if route_overrode || alias_candidates.is_empty() {
+                vec![model.clone()]
+            } else {
+                alias_candidates.clone()
+            };
+
+            // Record route name on the LLM span (only when the orchestrator produced one).
+            if let Some(ref rn) = route_name {
+                if !rn.is_empty() && rn != "none" {
+                    get_active_span(|span| {
+                        span.set_attribute(opentelemetry::KeyValue::new(
+                            tracing_plano::ROUTE_NAME,
+                            rn.clone(),
+                        ));
+                    });
+                }
             }
-        };
 
-        let (router_selected_model, route_name) =
-            (routing_result.model_name, routing_result.route_name);
-        let route_overrode = router_selected_model != "none";
-        let model = if route_overrode {
-            router_selected_model
-        } else {
-            alias_resolved_model.clone()
-        };
-        // When the orchestrator picked a specific model, honor exactly that (no
-        // alias-level health fallback). Otherwise use the health-ordered alias
-        // candidates so a rate-limited backend is skipped.
-        let cands = if route_overrode || alias_candidates.is_empty() {
-            vec![model.clone()]
-        } else {
-            alias_candidates.clone()
-        };
-
-        // Record route name on the LLM span (only when the orchestrator produced one).
-        if let Some(ref rn) = route_name {
-            if !rn.is_empty() && rn != "none" {
-                get_active_span(|span| {
-                    span.set_attribute(opentelemetry::KeyValue::new(
-                        tracing_plano::ROUTE_NAME,
-                        rn.clone(),
-                    ));
-                });
+            if let Some(ref sid) = session_id {
+                state
+                    .orchestrator_service
+                    .cache_route(sid.clone(), tenant_id.as_deref(), model.clone(), route_name)
+                    .await;
             }
-        }
 
-        if let Some(ref sid) = session_id {
-            state
-                .orchestrator_service
-                .cache_route(sid.clone(), tenant_id.as_deref(), model.clone(), route_name)
-                .await;
-        }
-
-        (model, cands)
-    };
+            (model, cands)
+        };
     tracing::Span::current().record(tracing_llm::MODEL_NAME, resolved_model.as_str());
 
     // --- Actor identity (injected by the auth edge) ---

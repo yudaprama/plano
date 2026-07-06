@@ -293,9 +293,19 @@ properties:
         properties:
           target:
             type: string
+            description: "Single backend target for this alias (backward-compatible form)."
+          targets:
+            type: array
+            description: "Multiple backend targets. brightstaff picks a healthy one per request (shuffled) and skips any in 429/5xx cooldown. All targets must share the same provider_interface."
+            items:
+              type: string
+            minItems: 1
         additionalProperties: false
-        required:
-          - target
+        anyOf:
+          - required:
+              - target
+          - required:
+              - targets
 
   overrides:
     type: object

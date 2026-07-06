@@ -557,9 +557,11 @@ async fn dispatch(
                 .with_context(parent_cx)
                 .await
         }
-        (&Method::GET, "/v1/models" | "/agents/v1/models") => {
-            Ok(list_models(Arc::clone(&state.llm_providers), state.exposed_models.as_ref()).await)
-        }
+        (&Method::GET, "/v1/models" | "/agents/v1/models") => Ok(list_models(
+            Arc::clone(&state.llm_providers),
+            state.exposed_models.as_ref(),
+        )
+        .await),
         (&Method::OPTIONS, "/v1/models" | "/agents/v1/models") => cors_preflight(),
         (&Method::GET, "/debug/memstats") => debug::memstats().await,
         _ => {

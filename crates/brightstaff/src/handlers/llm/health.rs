@@ -72,10 +72,13 @@ impl ModelHealthTracker {
         let now = Instant::now();
         let (mut available, mut cooled): (Vec<String>, Vec<String>) = {
             let guard = self.cooldowns.read().unwrap();
-            candidates.iter().cloned().partition(|m| match guard.get(m) {
-                Some(until) => *until <= now,
-                None => true,
-            })
+            candidates
+                .iter()
+                .cloned()
+                .partition(|m| match guard.get(m) {
+                    Some(until) => *until <= now,
+                    None => true,
+                })
         };
         let mut rng = rand::rng();
         available.shuffle(&mut rng);
