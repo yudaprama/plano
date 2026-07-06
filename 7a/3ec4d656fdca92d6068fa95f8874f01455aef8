@@ -1,0 +1,59 @@
+crates/brightstaff/src/main.rs
+  s_1a97b9a473b860::t_95ac34282c4cda 369
+FORK.md
+  s_f433fe497cf4ad::t_72c03ef9811a3b 108-132
+  s_f433fe497cf4ad::t_9a15eb555df2fe 34
+  s_f433fe497cf4ad::t_d324e3f184c905 133
+crates/brightstaff/src/handlers/llm/health.rs
+  s_1a97b9a473b860::t_045ab40597f080 1-136
+crates/common/src/configuration.rs
+  s_1a97b9a473b860::t_2f209ecf5d0dc5 40-75
+crates/brightstaff/src/app_state.rs
+  s_1a97b9a473b860::t_9269b3155093d2 8
+  s_1a97b9a473b860::t_2ff1343bfbb2f9 37-39
+crates/brightstaff/src/handlers/llm/mod.rs
+  s_1a97b9a473b860::t_5353d5c0565b91 528-543,548-555
+  s_1a97b9a473b860::t_e6fa885ccab605 428-430
+  s_1a97b9a473b860::t_3e952bb36569a2 831
+  s_1a97b9a473b860::t_25a88009a14569 998-1001,1004,1007-1014,1017-1044
+  s_1a97b9a473b860::t_d565c523074a04 362-363,368-374
+  s_1a97b9a473b860::t_51f6a571f26de8 182
+  s_1a97b9a473b860::t_ec584b5e7eeb89 588
+  s_1a97b9a473b860::t_49a74beb9087d9 457
+  s_1a97b9a473b860::t_e870f9178455a4 308-311
+  s_1a97b9a473b860::t_504dc90cffa522 720-722,734,750-753,755-782,784-787,789-793,795-830,832-852,855-873
+  s_1a97b9a473b860::t_adb8b6c6b713ad 754
+  s_1a97b9a473b860::t_f5633798796239 314-319,325-326
+  s_1a97b9a473b860::t_9b13ac5d48dc5f 455-456,458
+  s_1a97b9a473b860::t_b89edf1cd5b69d 168
+  s_1a97b9a473b860::t_90328762f7c023 478
+  s_1a97b9a473b860::t_c02e838acef946 24
+  s_1a97b9a473b860::t_9ecd957099bc19 21
+  s_1a97b9a473b860::t_071c96c22246ae 396
+  s_1a97b9a473b860::t_bc2a670478ecdc 25
+  s_1a97b9a473b860::t_9f202636a2c5d2 375
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "7a3ec4d656fdca92d6068fa95f8874f01455aef8",
+  "prompts": {},
+  "sessions": {
+    "s_1a97b9a473b860": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b74f07d-dfe0-495f-a477-23d67be68b9e",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    },
+    "s_f433fe497cf4ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00b65d5f-55c7-4de8-b600-b1641fa582bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
