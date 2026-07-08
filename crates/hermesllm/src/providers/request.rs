@@ -1,5 +1,5 @@
 use crate::apis::anthropic::MessagesRequest;
-use crate::apis::openai::{is_kimi_code_model, ChatCompletionsRequest};
+use crate::apis::openai::{is_kimi_code_model, ChatCompletionsRequest, StreamOptions};
 use log::warn;
 
 use crate::apis::amazon_bedrock::{ConverseRequest, ConverseStreamRequest};
@@ -105,6 +105,17 @@ impl ProviderRequestType {
                 // spec default keeps the upstream's response shape predictable.
                 if req.stream.is_none() {
                     req.stream = Some(false);
+                }
+                // Force usage reporting on streaming upstreams so the billing
+                // pipeline can meter the request. Most OpenAI-compatible providers
+                // omit token usage from the SSE stream unless
+                // `stream_options.include_usage` is set, which surfaces downstream
+                // as metering "missing_tokens" (a revenue leak). Only injected when
+                // the caller didn't set it; kimi-for-coding strips it again below.
+                if req.stream == Some(true) && req.stream_options.is_none() {
+                    req.stream_options = Some(StreamOptions {
+                        include_usage: Some(true),
+                    });
                 }
                 if is_kimi_code_model(req.model()) {
                     req.normalize_for_kimi_code_api();
