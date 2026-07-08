@@ -165,6 +165,11 @@ pub mod plano {
 pub mod billing {
     /// Customer/actor identifier from API key verification.
     pub const ACTOR_ID: &str = "billing.actor_id";
+    /// Requested model alias (e.g. `kawai-pro-max`) as sent by the client, before
+    /// it is resolved to a concrete backend model. Stamped so the metering ledger
+    /// can display the brand alias instead of the real upstream model; pricing
+    /// still keys off `llm.model` (the resolved backend).
+    pub const MODEL_ALIAS: &str = "billing.model_alias";
 }
 
 // =============================================================================

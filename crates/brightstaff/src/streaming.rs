@@ -215,6 +215,10 @@ pub struct ObservableStreamProcessor {
     /// the downstream metering pipeline can attribute usage. brightstaff no longer
     /// deducts billing (moved to the external metering service).
     actor_id: Option<String>,
+    /// Requested model alias (e.g. `kawai-pro-max`) as sent by the client. Stamped
+    /// on the LLM span so the metering ledger can display the brand instead of the
+    /// resolved backend model. Pricing still keys off the real `llm.model`.
+    model_alias: Option<String>,
     /// Kept for StreamProcessor trait compatibility; always None (no deduction task).
     pending_billing: Option<tokio::task::JoinHandle<()>>,
 }
@@ -254,6 +258,7 @@ impl ObservableStreamProcessor {
             llm_metrics: None,
             metrics_recorded: false,
             actor_id: None,
+            model_alias: None,
             pending_billing: None,
         }
     }
@@ -271,6 +276,15 @@ impl ObservableStreamProcessor {
         self
     }
 
+    /// Attach the requested model alias (e.g. `kawai-pro-max`) for billing-span
+    /// display. Ignored when empty.
+    pub fn with_model_alias(mut self, model_alias: String) -> Self {
+        if !model_alias.is_empty() {
+            self.model_alias = Some(model_alias);
+        }
+        self
+    }
+
     /// Stamp the actor id on the LLM span so the downstream metering pipeline can
     /// attribute usage. (brightstaff no longer deducts billing — moved externally.)
     fn prepare_billing(&mut self, _usage: &ExtractedUsage) {
@@ -278,9 +292,14 @@ impl ObservableStreamProcessor {
             return;
         };
         let span = tracing::Span::current();
-        span.context()
-            .span()
-            .set_attribute(KeyValue::new(tracing_billing::ACTOR_ID, actor_id));
+        let cx = span.context();
+        let otel = cx.span();
+        otel.set_attribute(KeyValue::new(tracing_billing::ACTOR_ID, actor_id));
+        // Stamp the requested alias alongside the actor so the metering ledger can
+        // show the brand (e.g. kawai-pro-max) rather than the resolved backend.
+        if let Some(alias) = self.model_alias.take() {
+            otel.set_attribute(KeyValue::new(tracing_billing::MODEL_ALIAS, alias));
+        }
     }
 
     /// Take the billing deduction handle (for awaiting after `on_complete`).

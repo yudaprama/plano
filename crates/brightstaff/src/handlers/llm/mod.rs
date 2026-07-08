@@ -931,6 +931,9 @@ async fn send_upstream(
     if let Some(ref aid) = &actor_id {
         base_processor = base_processor.with_actor_id(aid.clone());
     }
+    // Attach the client-requested model alias (e.g. kawai-pro-max) so the metering
+    // ledger displays the brand instead of the resolved backend model.
+    base_processor = base_processor.with_model_alias(model_from_request.to_string());
 
     let output_filter_request_headers = if filter_pipeline.has_output_filters() {
         Some(request_headers.clone())
