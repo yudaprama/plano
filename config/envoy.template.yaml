@@ -334,7 +334,7 @@ static_resources:
                             - exact: "https://studio.getkawai.com"
                             - exact: "http://localhost:3010"
                           allow_methods: "GET, POST, OPTIONS"
-                          allow_headers: "authorization, content-type"
+                          allow_headers: "authorization, content-type, x-model-affinity"
                           allow_credentials: true
                           max_age: "86400"
                       routes:
@@ -459,7 +459,7 @@ static_resources:
                             - exact: "https://studio.getkawai.com"
                             - exact: "http://localhost:3010"
                           allow_methods: "GET, POST, OPTIONS"
-                          allow_headers: "authorization, content-type"
+                          allow_headers: "authorization, content-type, x-model-affinity"
                           allow_credentials: true
                           max_age: "86400"
                       routes:
