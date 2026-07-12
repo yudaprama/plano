@@ -332,9 +332,8 @@ static_resources:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
                           allow_origin_string_match:
                             - exact: "https://studio.getkawai.com"
-                            - exact: "http://localhost:3010"
                           allow_methods: "GET, POST, OPTIONS"
-                          allow_headers: "authorization, content-type, x-model-affinity"
+                          allow_headers: "authorization, content-type, x-model-affinity, x-project-id"
                           allow_credentials: true
                           max_age: "86400"
                       routes:
@@ -374,6 +373,7 @@ static_resources:
                           allowed_headers:
                             patterns:
                               - exact: authorization
+                              - exact: cookie
                         authorization_response:
                           allowed_upstream_headers:
                             patterns:
@@ -457,9 +457,8 @@ static_resources:
                           "@type": type.googleapis.com/envoy.extensions.filters.http.cors.v3.CorsPolicy
                           allow_origin_string_match:
                             - exact: "https://studio.getkawai.com"
-                            - exact: "http://localhost:3010"
                           allow_methods: "GET, POST, OPTIONS"
-                          allow_headers: "authorization, content-type, x-model-affinity"
+                          allow_headers: "authorization, content-type, x-model-affinity, x-project-id"
                           allow_credentials: true
                           max_age: "86400"
                       routes:
@@ -501,6 +500,7 @@ static_resources:
                           allowed_headers:
                             patterns:
                               - exact: authorization
+                              - exact: cookie
                         authorization_response:
                           allowed_upstream_headers:
                             patterns:
