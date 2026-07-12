@@ -1,0 +1,32 @@
+FORK.md
+  s_67f03f82a04413::t_972e3ee1ff6983 136-187
+  s_67f03f82a04413::t_cf1bacdc9be05c 222-225
+  s_67f03f82a04413::t_9df52559dc37a7 35-36
+cli/planoai/config_generator.py
+  s_49c6c1cb22d525::t_74d95afb1a5e3a 453-457,459-460
+  s_49c6c1cb22d525::t_6b8bc9b9bc2347 629-632,636-643,645,647-651
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "97aed4855fdb42b9fe172a05561a5379d27daf75",
+  "prompts": {},
+  "sessions": {
+    "s_49c6c1cb22d525": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "ccd91c03-dd1a-4541-9dec-487ebd7b3017",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    },
+    "s_67f03f82a04413": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0c92c59b1ffeHfr5USKcFtvRSu",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}

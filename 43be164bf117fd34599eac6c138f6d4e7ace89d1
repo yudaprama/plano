@@ -1,0 +1,38 @@
+crates/brightstaff/src/handlers/models.rs
+  s_1a97b9a473b860::t_23071fab0b8b5d 2,11-12,14-40,44
+config/plano_config_schema.yaml
+  s_1a97b9a473b860::t_dd2e48a106674e 684-700
+  s_f433fe497cf4ad::t_1ca127f7b5d95d 171,234
+crates/brightstaff/src/app_state.rs
+  s_1a97b9a473b860::t_632753b83e659c 4
+  s_1a97b9a473b860::t_6482a69959a65b 34-35
+crates/brightstaff/src/main.rs
+  s_1a97b9a473b860::t_a92746ea2ef22a 368
+  s_1a97b9a473b860::t_523ff71d4dd9ed 560
+crates/common/src/configuration.rs
+  s_1a97b9a473b860::t_c2a755c72b7b9a 213-226,248-250
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "43be164bf117fd34599eac6c138f6d4e7ace89d1",
+  "prompts": {},
+  "sessions": {
+    "s_1a97b9a473b860": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b74f07d-dfe0-495f-a477-23d67be68b9e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    },
+    "s_f433fe497cf4ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00b65d5f-55c7-4de8-b600-b1641fa582bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}

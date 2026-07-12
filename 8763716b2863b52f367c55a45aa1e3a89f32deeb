@@ -1,0 +1,26 @@
+crates/brightstaff/src/streaming.rs
+  s_eeccb9f27ffaf4::t_70ed961a5b2e11 218-221
+  s_eeccb9f27ffaf4::t_3b5bab2708b3ff 261
+  s_eeccb9f27ffaf4::t_8bcc51cf066102 279-287
+  s_eeccb9f27ffaf4::t_557ddb48dc2e86 295-302
+crates/brightstaff/src/handlers/llm/mod.rs
+  s_eeccb9f27ffaf4::t_4bebf56c9514f4 934-936
+crates/brightstaff/src/tracing/constants.rs
+  s_eeccb9f27ffaf4::t_4c53b9f0ecc88e 168-172
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "8763716b2863b52f367c55a45aa1e3a89f32deeb",
+  "prompts": {},
+  "sessions": {
+    "s_eeccb9f27ffaf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e12366f4-a90c-49f4-96b0-3f9a0b3a33e2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}

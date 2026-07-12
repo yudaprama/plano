@@ -1,0 +1,19 @@
+config/envoy.template.yaml
+  s_9304ebc138b332::t_4b2346efdb86c6 337,462
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "2dde5870405db498bac37c312e6d67f9b59aeb91",
+  "prompts": {},
+  "sessions": {
+    "s_9304ebc138b332": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_0be36d17dffe3mF9sORQZBhRtL",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}

@@ -1,0 +1,21 @@
+crates/llm_gateway/src/stream_context.rs
+  s_f433fe497cf4ad::t_71968f76d8e335 229-230,238-249
+  s_f433fe497cf4ad::t_82607d0639d663 34-55
+  s_f433fe497cf4ad::t_df04526acc4096 1338-1371
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "acba49fb556dec3b3d67795b15245cce4a010f3e",
+  "prompts": {},
+  "sessions": {
+    "s_f433fe497cf4ad": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "00b65d5f-55c7-4de8-b600-b1641fa582bf",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}

@@ -1,0 +1,20 @@
+crates/hermesllm/src/providers/request.rs
+  s_eeccb9f27ffaf4::t_81a4378018453b 109-119
+  s_eeccb9f27ffaf4::t_44942d993b898f 2
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "95a8bd8e12eb7e736fd5097c48fc90eaf098aeff",
+  "prompts": {},
+  "sessions": {
+    "s_eeccb9f27ffaf4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "e12366f4-a90c-49f4-96b0-3f9a0b3a33e2",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}

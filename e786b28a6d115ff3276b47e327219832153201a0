@@ -1,0 +1,19 @@
+crates/brightstaff/src/handlers/models.rs
+  s_1a97b9a473b860::t_a9be3fb6015b5e 9-17,19,21-25
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.10",
+  "base_commit_sha": "e786b28a6d115ff3276b47e327219832153201a0",
+  "prompts": {},
+  "sessions": {
+    "s_1a97b9a473b860": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "5b74f07d-dfe0-495f-a477-23d67be68b9e",
+        "model": "claude-sonnet-4-6"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
