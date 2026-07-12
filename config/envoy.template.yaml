@@ -367,7 +367,12 @@ static_resources:
                         server_uri:
                           uri: oathkeeper:4456
                           cluster: oathkeeper
-                          timeout: 0.5s
+                          # 3s (not 0.5s): cookie_session -> Kratos /sessions/whoami
+                          # runs several queries against a REMOTE Supabase Postgres, which
+                          # intermittently exceeds 500ms and made Envoy fail closed with a
+                          # 403 UAEX (empty body) for valid browser sessions. failure_mode_allow
+                          # stays false, so a genuinely-down Oathkeeper still denies.
+                          timeout: 3s
                         path_prefix: /decisions
                         authorization_request:
                           allowed_headers:
@@ -494,7 +499,12 @@ static_resources:
                         server_uri:
                           uri: oathkeeper:4456
                           cluster: oathkeeper
-                          timeout: 0.5s
+                          # 3s (not 0.5s): cookie_session -> Kratos /sessions/whoami
+                          # runs several queries against a REMOTE Supabase Postgres, which
+                          # intermittently exceeds 500ms and made Envoy fail closed with a
+                          # 403 UAEX (empty body) for valid browser sessions. failure_mode_allow
+                          # stays false, so a genuinely-down Oathkeeper still denies.
+                          timeout: 3s
                         path_prefix: /decisions
                         authorization_request:
                           allowed_headers:
