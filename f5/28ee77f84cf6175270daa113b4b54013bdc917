@@ -1,0 +1,19 @@
+config/envoy.template.yaml
+  s_84822f0402b5dd::t_09b2227276ba83 370-375,502-507
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.12",
+  "base_commit_sha": "f528ee77f84cf6175270daa113b4b54013bdc917",
+  "prompts": {},
+  "sessions": {
+    "s_84822f0402b5dd": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "d532f028-a21e-4692-83a7-3affc80fb5ae",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
