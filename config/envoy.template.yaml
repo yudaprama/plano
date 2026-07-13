@@ -379,6 +379,10 @@ static_resources:
                             patterns:
                               - exact: authorization
                               - exact: cookie
+                              # kawai/ native mobile sends the Kratos session token here
+                              # (no cookie on native); forward it so the plano-v1 rule's
+                              # bearer_token authenticator can validate it via Kratos whoami.
+                              - exact: x-session-token
                         authorization_response:
                           allowed_upstream_headers:
                             patterns:
@@ -511,6 +515,10 @@ static_resources:
                             patterns:
                               - exact: authorization
                               - exact: cookie
+                              # kawai/ native mobile sends the Kratos session token here
+                              # (no cookie on native); forward it so the plano-v1 rule's
+                              # bearer_token authenticator can validate it via Kratos whoami.
+                              - exact: x-session-token
                         authorization_response:
                           allowed_upstream_headers:
                             patterns:
