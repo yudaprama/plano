@@ -1,0 +1,20 @@
+config/envoy.template.yaml
+  s_538df0203b8021::t_5bba2d33f6ff89 330-332,338-339
+  s_538df0203b8021::t_9a4b4dac0908d6 469,475-476
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.13",
+  "base_commit_sha": "57dce64f56366ac343a9cdb5ce2802c1b2d7e35b",
+  "prompts": {},
+  "sessions": {
+    "s_538df0203b8021": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "570422ba-b25f-4aca-a785-ad01cb69148b",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
