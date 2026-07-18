@@ -14,20 +14,45 @@ pub struct PostgreSQLConversationStorage {
 }
 
 impl PostgreSQLConversationStorage {
-    /// Creates a new Supabase storage instance with the given connection string
+    /// Creates a new PostgreSQL storage instance. TLS is chosen from the
+    /// connection string's `sslmode` query parameter (libpq default `prefer`).
+    /// `disable` → plaintext `NoTls`; any other value → rustls.
+    /// `require`/`prefer` encrypt WITHOUT verifying the certificate (mirrors
+    /// libpq/psql — required for Supabase, whose DB presents a private
+    /// "Supabase Intermediate 2021 CA" chain not anchored in Mozilla roots);
+    /// `verify-ca`/`verify-full` verify against webpki-roots.
     pub async fn new(connection_string: String) -> Result<Self, StateStorageError> {
-        let (client, connection) = tokio_postgres::connect(&connection_string, NoTls)
-            .await
-            .map_err(|e| {
-                StateStorageError::StorageError(format!("Failed to connect to database: {}", e))
-            })?;
+        let sslmode = parse_sslmode(&connection_string);
 
-        // Spawn the connection to run in the background
-        tokio::spawn(async move {
-            if let Err(e) = connection.await {
-                warn!("Database connection error: {}", e);
+        // The two TLS backends produce different Connection types, so each arm
+        // spawns its own connection future and yields just the (unified) Client.
+        let client = match sslmode {
+            SslMode::Disable => {
+                info!(sslmode = "disable", "connecting to Postgres without TLS");
+                let (client, connection) = tokio_postgres::connect(&connection_string, NoTls)
+                    .await
+                    .map_err(db_connect_err)?;
+                tokio::spawn(async move {
+                    if let Err(e) = connection.await {
+                        warn!("Database connection error: {}", e);
+                    }
+                });
+                client
             }
-        });
+            _ => {
+                let make_tls = make_rustls_connect(sslmode)?;
+                info!(?sslmode, "connecting to Postgres over TLS (rustls)");
+                let (client, connection) = tokio_postgres::connect(&connection_string, make_tls)
+                    .await
+                    .map_err(db_connect_err)?;
+                tokio::spawn(async move {
+                    if let Err(e) = connection.await {
+                        warn!("Database connection error: {}", e);
+                    }
+                });
+                client
+            }
+        };
 
         Ok(Self {
             client: Arc::new(client),
@@ -72,6 +97,132 @@ impl PostgreSQLConversationStorage {
             .await?;
 
         Ok(())
+    }
+}
+
+// ── TLS connector ───────────────────────────────────────────────────────────
+
+fn db_connect_err(e: tokio_postgres::Error) -> StateStorageError {
+    StateStorageError::StorageError(format!("Failed to connect to database: {}", e))
+}
+
+/// libpq `sslmode` values, mapped to the TLS strategy we use.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum SslMode {
+    Disable,
+    /// Encrypt; do not verify the certificate (libpq `prefer`/`require`).
+    Prefer,
+    Require,
+    VerifyCa,
+    VerifyFull,
+}
+
+/// Parse the libpq `sslmode` query parameter from a PostgreSQL connection
+/// string. Accepts both URL form (`...?sslmode=require`) and key=value form
+/// (`... sslmode=require`). Defaults to `Prefer` (libpq's default for non-local
+/// connections) when absent.
+fn parse_sslmode(connection_string: &str) -> SslMode {
+    let needle = "sslmode=";
+    let Some(start) = connection_string.to_ascii_lowercase().find(needle) else {
+        return SslMode::Prefer;
+    };
+    let val = connection_string[start + needle.len()..]
+        .chars()
+        .take_while(|c| c.is_ascii_alphanumeric() || matches!(c, '-' | '_'))
+        .collect::<String>();
+    match val.to_ascii_lowercase().as_str() {
+        "disable" => SslMode::Disable,
+        "require" => SslMode::Require,
+        "verify-ca" | "verifyca" => SslMode::VerifyCa,
+        "verify-full" | "verifyfull" => SslMode::VerifyFull,
+        // prefer / allow / unknown → encrypt, no verify
+        _ => SslMode::Prefer,
+    }
+}
+
+/// Build a rustls-backed TLS connector for tokio_postgres, honouring `sslmode`.
+fn make_rustls_connect(
+    sslmode: SslMode,
+) -> Result<tokio_postgres_rustls::MakeRustlsConnect, StateStorageError> {
+    let provider = Arc::new(rustls::crypto::ring::default_provider());
+    let builder = rustls::ClientConfig::builder_with_provider(provider)
+        .with_safe_default_protocol_versions()
+        .map_err(|e| StateStorageError::StorageError(format!("rustls protocol versions: {e}")))?;
+
+    let config = match sslmode {
+        SslMode::Disable => {
+            return Err(StateStorageError::StorageError(
+                "sslmode=disable does not use TLS; NoTls is applied in new()".to_string(),
+            ));
+        }
+        SslMode::VerifyCa | SslMode::VerifyFull => {
+            let mut roots = rustls::RootCertStore::empty();
+            roots.extend(webpki_roots::TLS_SERVER_ROOTS.iter().cloned());
+            builder.with_root_certificates(roots).with_no_client_auth()
+        }
+        // require / prefer: encrypt but do not verify (Supabase private CA).
+        SslMode::Require | SslMode::Prefer => builder
+            .dangerous()
+            .with_custom_certificate_verifier(Arc::new(AcceptAnyCert))
+            .with_no_client_auth(),
+    };
+
+    Ok(tokio_postgres_rustls::MakeRustlsConnect::new(config))
+}
+
+/// No-op certificate verifier — accepts any server certificate. Mirrors libpq's
+/// `sslmode=require` (encrypt without authenticating the peer), which is
+/// required for Supabase Postgres: its DB endpoint presents a private
+/// "Supabase Intermediate 2021 CA" chain that is not anchored in Mozilla's root
+/// store, so standard verification would reject it. The connection is still
+/// fully TLS-encrypted; only certificate verification is bypassed. Do NOT use
+/// with `sslmode=verify-*`.
+#[derive(Debug)]
+struct AcceptAnyCert;
+
+impl rustls::client::danger::ServerCertVerifier for AcceptAnyCert {
+    fn verify_server_cert(
+        &self,
+        _end_entity: &rustls::pki_types::CertificateDer<'_>,
+        _intermediates: &[rustls::pki_types::CertificateDer<'_>],
+        _server_name: &rustls::pki_types::ServerName<'_>,
+        _ocsp_response: &[u8],
+        _now: rustls::pki_types::UnixTime,
+    ) -> Result<rustls::client::danger::ServerCertVerified, rustls::Error> {
+        Ok(rustls::client::danger::ServerCertVerified::assertion())
+    }
+
+    fn verify_tls12_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn verify_tls13_signature(
+        &self,
+        _message: &[u8],
+        _cert: &rustls::pki_types::CertificateDer<'_>,
+        _dss: &rustls::DigitallySignedStruct,
+    ) -> Result<rustls::client::danger::HandshakeSignatureValid, rustls::Error> {
+        Ok(rustls::client::danger::HandshakeSignatureValid::assertion())
+    }
+
+    fn supported_verify_schemes(&self) -> Vec<rustls::SignatureScheme> {
+        vec![
+            rustls::SignatureScheme::RSA_PKCS1_SHA256,
+            rustls::SignatureScheme::ECDSA_NISTP256_SHA256,
+            rustls::SignatureScheme::ED25519,
+            rustls::SignatureScheme::RSA_PSS_SHA256,
+            rustls::SignatureScheme::RSA_PKCS1_SHA384,
+            rustls::SignatureScheme::ECDSA_NISTP384_SHA384,
+            rustls::SignatureScheme::RSA_PSS_SHA384,
+            rustls::SignatureScheme::RSA_PKCS1_SHA512,
+            rustls::SignatureScheme::RSA_PSS_SHA512,
+            rustls::SignatureScheme::ECDSA_NISTP521_SHA512,
+        ]
     }
 }
 

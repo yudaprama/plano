@@ -338,7 +338,7 @@ static_resources:
                             - exact: "https://localhost"
                             - exact: "capacitor://localhost"
                           allow_methods: "GET, POST, OPTIONS"
-                          allow_headers: "authorization, content-type, x-model-affinity, x-project-id"
+                          allow_headers: "authorization, content-type, x-model-affinity, x-project-id, x-session-token"
                           allow_credentials: true
                           max_age: "86400"
                       routes:
@@ -475,7 +475,7 @@ static_resources:
                             - exact: "https://localhost"
                             - exact: "capacitor://localhost"
                           allow_methods: "GET, POST, OPTIONS"
-                          allow_headers: "authorization, content-type, x-model-affinity, x-project-id"
+                          allow_headers: "authorization, content-type, x-model-affinity, x-project-id, x-session-token"
                           allow_credentials: true
                           max_age: "86400"
                       routes:
