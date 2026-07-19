@@ -23,6 +23,7 @@ pub const X_ARCH_FC_MODEL_RESPONSE: &str = "x-arch-fc-model-response";
 pub const ARCH_FC_MODEL_NAME: &str = "Arch-Function";
 pub const REQUEST_ID_HEADER: &str = "x-request-id";
 pub const MODEL_AFFINITY_HEADER: &str = "x-model-affinity";
+pub const ARCH_INTERNAL_KEY_HEADER: &str = "x-arch-internal-key";
 pub const ENVOY_ORIGINAL_PATH_HEADER: &str = "x-envoy-original-path";
 pub const TRACE_PARENT_HEADER: &str = "traceparent";
 pub const ARCH_INTERNAL_CLUSTER_NAME: &str = "arch_internal";

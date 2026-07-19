@@ -1,6 +1,9 @@
 use bytes::Bytes;
 use common::configuration::{FilterPipeline, ModelAlias};
-use common::consts::{ARCH_IS_STREAMING_HEADER, ARCH_PROVIDER_HINT_HEADER, MODEL_AFFINITY_HEADER};
+use common::consts::{
+    ARCH_INTERNAL_KEY_HEADER, ARCH_IS_STREAMING_HEADER, ARCH_PROVIDER_HINT_HEADER,
+    MODEL_AFFINITY_HEADER,
+};
 use common::llm_providers::LlmProviders;
 use hermesllm::apis::openai::Message;
 use hermesllm::apis::openai_responses::InputParam;
@@ -115,7 +118,14 @@ async fn llm_chat_inner(
         }
     }
 
-    // Session pinning: extract session ID and check cache before routing
+    // Session pinning: extract session ID and check cache before routing.
+    // Internal-ingress requests (egents calling back via :12010) carry the
+    // x-arch-internal-key header (validated by envoy's Lua gate). Their `model`
+    // field is authoritative — never override it with a session-pinned routing
+    // decision, which was meant for client-facing requests only. Without this
+    // guard a single bad routing decision poisons every subsequent egent
+    // ReAct turn for the whole session.
+    let is_internal_call = request_headers.contains_key(ARCH_INTERNAL_KEY_HEADER);
     let session_id: Option<String> = request_headers
         .get(MODEL_AFFINITY_HEADER)
         .and_then(|h| h.to_str().ok())
@@ -126,11 +136,15 @@ async fn llm_chat_inner(
         .and_then(|hdr| request_headers.get(hdr))
         .and_then(|v| v.to_str().ok())
         .map(|s| s.to_string());
-    let cached_route = if let Some(ref sid) = session_id {
-        state
-            .orchestrator_service
-            .get_cached_route(sid, tenant_id.as_deref())
-            .await
+    let cached_route = if !is_internal_call {
+        if let Some(ref sid) = session_id {
+            state
+                .orchestrator_service
+                .get_cached_route(sid, tenant_id.as_deref())
+                .await
+        } else {
+            None
+        }
     } else {
         None
     };
