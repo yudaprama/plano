@@ -1,0 +1,22 @@
+crates/common/src/consts.rs
+  s_99917cd40460e5::t_06ae00c5ac3693 26
+crates/brightstaff/src/handlers/llm/mod.rs
+  s_99917cd40460e5::t_391b4f17206d8a 121-128,139-147
+  s_99917cd40460e5::t_e66577c18d86f5 3-6
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "4c7b21293100400a09991a90ebee82606f01afb2",
+  "prompts": {},
+  "sessions": {
+    "s_99917cd40460e5": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_08615f420ffewfoZCPPHCGbO4K",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
