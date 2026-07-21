@@ -1046,8 +1046,20 @@ fn resolve_model_alias(
 }
 
 /// Whether an upstream HTTP status should trigger trying the next candidate.
+///
+/// Beyond 429/5xx we also fail over on 401/404. Every backend in a pool is
+/// reached with the SAME server-side credential (e.g. `$OPENCODE_API_KEYS`),
+/// never a per-user key — so a 401/404 in production is virtually always a
+/// specific target being withdrawn/disabled upstream (OpenCode returns 401
+/// "Model X is not supported" for retired free models), not a per-request auth
+/// fault. Failing over recovers the turn against the pool's healthy targets.
+/// The only case this doesn't fix — a globally bad/expired credential — makes
+/// every candidate 401 anyway, so it fails after exhausting the pool (an ops
+/// incident, not a hot-path concern). We deliberately avoid body-sniffing the
+/// error text: it would be a fragile per-provider allowlist that silently
+/// stops failing over the moment a provider reworded its disabled-model error.
 fn is_retryable_status(status: StatusCode) -> bool {
-    matches!(status.as_u16(), 429 | 500 | 502 | 503 | 504)
+    matches!(status.as_u16(), 401 | 404 | 429 | 500 | 502 | 503 | 504)
 }
 
 /// Parse an integer-seconds `Retry-After` header into a cooldown duration.
@@ -1112,7 +1124,8 @@ async fn get_provider_info(
 
 #[cfg(test)]
 mod tests {
-    use super::{get_provider_info, get_upstream_path};
+    use super::{get_provider_info, get_upstream_path, is_retryable_status};
+    use hyper::StatusCode;
     use common::configuration::{LlmProvider, LlmProviderType};
     use common::llm_providers::LlmProviders;
     use hermesllm::apis::OpenAIApi;
@@ -1135,6 +1148,19 @@ mod tests {
         Arc::new(RwLock::new(
             LlmProviders::try_from(providers).expect("test providers should be valid"),
         ))
+    }
+
+    #[test]
+    fn retryable_status_fails_over_on_429_5xx_and_disabled_model_401_404() {
+        // 429/5xx (transient) plus 401/404 (a pooled target withdrawn upstream,
+        // e.g. OpenCode "Model X is not supported") all trigger fail-over.
+        for code in [401u16, 404, 429, 500, 502, 503, 504] {
+            assert!(is_retryable_status(StatusCode::from_u16(code).unwrap()));
+        }
+        // Success and other client errors are propagated as-is.
+        for code in [200u16, 400, 403, 422] {
+            assert!(!is_retryable_status(StatusCode::from_u16(code).unwrap()));
+        }
     }
 
     #[tokio::test]
