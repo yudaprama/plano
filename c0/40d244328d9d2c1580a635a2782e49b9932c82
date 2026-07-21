@@ -1,0 +1,23 @@
+crates/brightstaff/src/handlers/llm/mod.rs
+  s_9cc8e9f07e0082::t_916701f5d51d2e 1153,1158-1159,1162-1165
+  s_9cc8e9f07e0082::t_cb3f07994740e2 1127
+  s_9cc8e9f07e0082::t_631468567ac349 1049-1060,1062
+  s_9cc8e9f07e0082::t_41373a147358e0 1128
+  s_9cc8e9f07e0082::t_9b8419d24a787c 1154-1157,1160-1161
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.14",
+  "base_commit_sha": "c040d244328d9d2c1580a635a2782e49b9932c82",
+  "prompts": {},
+  "sessions": {
+    "s_9cc8e9f07e0082": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "0c6deb0d-c302-432b-a32a-3d8201248bd1",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
