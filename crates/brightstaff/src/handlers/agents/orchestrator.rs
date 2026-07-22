@@ -217,6 +217,7 @@ async fn select_and_build_agent_map(
     messages: &[OpenAIMessage],
     listener: &common::configuration::Listener,
     request_id: Option<String>,
+    requested_agent_id: Option<&str>,
 ) -> Result<
     (
         Vec<common::configuration::AgentFilterChain>,
@@ -232,7 +233,7 @@ async fn select_and_build_agent_map(
 
     let selection_start = Instant::now();
     let selected_agents = agent_selector
-        .select_agents(messages, listener, request_id)
+        .select_agents(messages, listener, request_id, requested_agent_id)
         .await?;
 
     let selection_elapsed_ms = selection_start.elapsed().as_secs_f64() * 1000.0;
@@ -416,12 +417,26 @@ async fn handle_agent_chat_inner(
     let (agent_req, listener, agent_selector) =
         parse_agent_request(request, &state, &request_id, &custom_attrs).await?;
 
+    // The client picks an agent directly via the `x-arch-agent-id` header. A
+    // value matching a configured agent id bypasses the Plano-Orchestrator;
+    // absence (or an unknown id) falls through to normal orchestration. Kept off
+    // the `model` field so the existing model contract on the :8001 agent path
+    // is unchanged for current callers (web/, eval) — only opt-in callers that
+    // send the header change behavior.
+    let requested_agent_id = agent_req
+        .request_headers
+        .get("x-arch-agent-id")
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|id| !id.is_empty());
+
     let (selected_agents, agent_map) = select_and_build_agent_map(
         &agent_selector,
         &state,
         &agent_req.messages,
         &listener,
         agent_req.request_id,
+        requested_agent_id,
     )
     .await?;
 

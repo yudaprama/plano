@@ -42,6 +42,27 @@ Client → Envoy (prompt_gateway.wasm → llm_gateway.wasm) → Agents/LLM Provi
                          brightstaff (native binary: state, routing, signals, tracing)
 ```
 
+### Agent selection & orchestrator bypass (fork feature)
+
+On an agent listener (`type: agent`, e.g. `:8001`), `agent_chat` normally calls the
+**Plano-Orchestrator** LLM to pick one agent from the listener's configured `agents[]`
+based on their descriptions. The decision ladder lives in
+`crates/brightstaff/src/handlers/agents/selector.rs::select_agents`, evaluated in order:
+
+1. **Client-pinned agent** — if the request carries an **`x-arch-agent-id`** header whose
+   value matches a configured agent `id`, route straight to that agent and **skip the
+   orchestrator LLM call**. An absent/unknown id falls through.
+2. **Single agent** — if the listener has exactly one agent, use it (no orchestrator).
+3. **Otherwise** — call `OrchestratorService::determine_orchestration` (the LLM).
+
+The pin is a **header, not the `model` body field**, on purpose: `model` keeps its existing
+meaning on the agent path (current callers send `kawai-auto` / `plano-orchestrator`), so
+turning on client selection has **zero blast radius** for existing callers — only requests
+that opt in by sending the header change behavior. The auth/billing pipeline
+(`verify_authorization`, `x-arch-actor-id` injection, metering) still runs; only agent
+*selection* is bypassed. There is no HTTP endpoint that lists agents — the set lives in the
+static config (`plano_config.yaml` → `listeners[].agents[]`).
+
 ### Crates (crates/)
 
 - **prompt_gateway** (WASM) — Proxy-WASM filter for prompt processing, guardrails, filter chains

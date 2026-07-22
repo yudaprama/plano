@@ -103,17 +103,31 @@ impl AgentSelector {
         preferences
     }
 
-    /// Select multiple agents using orchestration
+    /// Select multiple agents using orchestration.
+    ///
+    /// When `requested_agent_id` (the `x-arch-agent-id` header) names a configured
+    /// agent, the client has explicitly picked that agent: route directly to it
+    /// and skip the Plano-Orchestrator LLM selection call. An absent or unknown
+    /// id falls through to normal orchestration.
     pub async fn select_agents(
         &self,
         messages: &[Message],
         listener: &Listener,
         request_id: Option<String>,
+        requested_agent_id: Option<&str>,
     ) -> Result<Vec<AgentFilterChain>, AgentSelectionError> {
         let agents = listener
             .agents
             .as_ref()
             .ok_or_else(|| AgentSelectionError::NoAgentsConfigured(listener.name.clone()))?;
+
+        // Client-selected agent: the `model` field names a configured agent.
+        if let Some(requested) = requested_agent_id {
+            if let Some(agent) = agents.iter().find(|a| a.id == requested) {
+                debug!(agent = %requested, "client selected agent, bypassing orchestrator");
+                return Ok(vec![agent.clone()]);
+            }
+        }
 
         // If only one agent, skip orchestration
         if agents.len() == 1 {
@@ -258,6 +272,29 @@ mod tests {
         assert_eq!(agent_map.len(), 2);
         assert!(agent_map.contains_key("agent1"));
         assert!(agent_map.contains_key("agent2"));
+    }
+
+    #[tokio::test]
+    async fn test_select_agents_client_selected_bypasses_orchestrator() {
+        let selector = AgentSelector::new(create_test_orchestrator_service());
+        let listener = create_test_listener(
+            "l",
+            vec![
+                create_test_agent("agent1", "first", true),
+                create_test_agent("agent2", "second", false),
+                create_test_agent("agent3", "third", false),
+            ],
+        );
+
+        // `x-arch-agent-id` names a non-default agent → route straight to it,
+        // no orchestrator call (which would be unreachable in this test).
+        let result = selector
+            .select_agents(&[], &listener, None, Some("agent2"))
+            .await
+            .expect("client-selected agent should resolve");
+
+        assert_eq!(result.len(), 1);
+        assert_eq!(result[0].id, "agent2");
     }
 
     #[test]
