@@ -1,0 +1,29 @@
+crates/brightstaff/src/handlers/agents/orchestrator.rs
+  s_7d9edd31cd1ff4::t_d5f0733d510d13 432,439
+  s_7d9edd31cd1ff4::t_d487c3233f4256 220,236
+  s_7d9edd31cd1ff4::t_749b642d7b21aa 420-431
+CLAUDE.md
+  s_7d9edd31cd1ff4::t_1226a21f710e62 45-65
+crates/brightstaff/src/handlers/agents/selector.rs
+  s_7d9edd31cd1ff4::t_045ad11cc1d93b 106-107,109,117,124-130
+  s_7d9edd31cd1ff4::t_ec63a1cea23fd3 277-288,291-299
+  s_7d9edd31cd1ff4::t_448017b323cd9c 289-290
+  s_7d9edd31cd1ff4::t_562ac899afc21e 131
+  s_7d9edd31cd1ff4::t_15c3c8482483bb 108,110-111
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.15",
+  "base_commit_sha": "3f3168776ddf50d21530af76a3833b52ac4f757c",
+  "prompts": {},
+  "sessions": {
+    "s_7d9edd31cd1ff4": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "55cf7bc1-31a6-458b-8435-e676a6d53a15",
+        "model": "claude-opus-4-8"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
