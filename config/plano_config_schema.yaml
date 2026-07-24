@@ -581,6 +581,25 @@ properties:
             type: string
             description: Static key value; supports $ENV_VAR substitution at render time.
         additionalProperties: false
+      internal_agent_listener:
+        type: object
+        description: >
+          Loopback-only internal AGENT ingress (e.g. :8002) that trusted internal
+          callers (hatchet-workers' scheduled agent-run) call instead of the public
+          :8001, skipping ext_authz. Same trust as internal_listener (127.0.0.1 bind
+          + x-arch-internal-key); the caller forwards x-arch-actor-id for billing.
+          Routes to the agent path (orchestrator + tools). NEVER tunnel this port.
+        properties:
+          enabled:
+            type: boolean
+            default: false
+          port:
+            type: integer
+            default: 8002
+          key:
+            type: string
+            description: Static key value; supports $ENV_VAR substitution at render time.
+        additionalProperties: false
     additionalProperties: false
   prompt_guards:
     type: object

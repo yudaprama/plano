@@ -700,6 +700,21 @@ def validate_and_render_schema():
             "key": il_key,
         }
 
+    # Internal loopback-only AGENT ingress (e.g. :8002). Trusted internal
+    # callers (hatchet-workers' scheduled agent-run) call this instead of the
+    # public :8001 to skip ext_authz; same loopback + internal-key trust as the
+    # model internal listener, but the template routes it to the agent path.
+    internal_agent_listener = None
+    ial_cfg = config_yaml.get("auth", {}).get("internal_agent_listener")
+    if ial_cfg and ial_cfg.get("enabled", False):
+        ial_key = ial_cfg.get("key", "") or ""
+        if isinstance(ial_key, str) and ial_key.startswith("$"):
+            ial_key = os.environ.get(ial_key[1:], "")
+        internal_agent_listener = {
+            "port": ial_cfg.get("port", 8002),
+            "key": ial_key,
+        }
+
     data = {
         "prompt_gateway_listener": prompt_gateway,
         "llm_gateway_listener": llm_gateway,
@@ -715,6 +730,7 @@ def validate_and_render_schema():
         "upstream_tls_ca_path": upstream_tls_ca_path,
         "ext_authz_enabled": ext_authz_enabled,
         "internal_listener": internal_listener,
+        "internal_agent_listener": internal_agent_listener,
     }
 
     rendered = template.render(data)
