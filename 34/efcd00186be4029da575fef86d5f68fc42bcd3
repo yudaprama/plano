@@ -1,0 +1,26 @@
+config/envoy.template.yaml
+  s_4d6b4ab7a3d1fc::t_9bececa108ca88 633,637-702
+  s_4d6b4ab7a3d1fc::t_0ee82740a515e7 631-632
+  s_4d6b4ab7a3d1fc::t_9328adae82823c 634-636
+config/plano_config_schema.yaml
+  s_4d6b4ab7a3d1fc::t_2f6a363ca99537 584-602
+cli/planoai/config_generator.py
+  s_4d6b4ab7a3d1fc::t_99110d095eb655 703-717
+  s_4d6b4ab7a3d1fc::t_0fc7895ef37201 733
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "34efcd00186be4029da575fef86d5f68fc42bcd3",
+  "prompts": {},
+  "sessions": {
+    "s_4d6b4ab7a3d1fc": {
+      "agent_id": {
+        "tool": "claude",
+        "id": "1614671f-44b0-4318-8b3e-1f5f3672b2ad",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
