@@ -344,6 +344,10 @@ static_resources:
                       routes:
                         - match:
                             prefix: "/healthz"
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+                              disabled: true
                           direct_response:
                             status: 200
                         - match:
@@ -481,6 +485,10 @@ static_resources:
                       routes:
                         - match:
                             prefix: "/healthz"
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+                              disabled: true
                           direct_response:
                             status: 200
                         - match:
@@ -606,6 +614,10 @@ static_resources:
                       routes:
                         - match:
                             prefix: "/healthz"
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+                              disabled: true
                           direct_response:
                             status: 200
                         - match:
@@ -677,6 +689,10 @@ static_resources:
                       routes:
                         - match:
                             prefix: "/healthz"
+                          typed_per_filter_config:
+                            envoy.filters.http.ext_authz:
+                              "@type": type.googleapis.com/envoy.extensions.filters.http.ext_authz.v3.ExtAuthzPerRoute
+                              disabled: true
                           direct_response:
                             status: 200
                         - match:
