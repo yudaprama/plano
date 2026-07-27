@@ -1,0 +1,23 @@
+crates/brightstaff/src/handlers/agents/responses_translator.rs
+  s_42bc2632d74123::t_a5897cf7fcddd1 143-149,153
+  s_42bc2632d74123::t_31761d62e77c60 100-102,107-111
+  s_42bc2632d74123::t_d1a2e8991bb45e 266-278
+  s_42bc2632d74123::t_38c3a7a5df00d9 99,103-106,113-128,130,133-137
+  s_42bc2632d74123::t_6e35a4bfae7334 265
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "c8540d53bb05cf999f2b8c0d131cdbebb5d94779",
+  "prompts": {},
+  "sessions": {
+    "s_42bc2632d74123": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_05e603aceffeasFHIExtuWG6ed",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
