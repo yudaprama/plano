@@ -96,45 +96,61 @@ impl StreamProcessor for AgentResponsesTranslatorProcessor {
             // Non-streaming: accumulate JSON until we can parse a complete
             // ChatCompletionsResponse, then convert + emit as a single chunk.
             self.non_stream_buffer.extend_from_slice(&chunk);
-            match serde_json::from_slice::<ChatCompletionsResponse>(&self.non_stream_buffer) {
-                Ok(cc) => {
-                    let resp: ResponsesAPIResponse = cc
-                        .try_into()
-                        .map_err(|e| format!("translate ChatCompletions→Responses: {e}"))?;
-                    let bytes = serde_json::to_vec(&resp)
-                        .map_err(|e| format!("serialize ResponsesAPIResponse: {e}"))?;
-                    self.non_stream_buffer.clear();
-                    Ok(Some(Bytes::from(bytes)))
-                }
-                Err(_) => {
-                    // Incomplete JSON — wait for more bytes. If the buffer is
-                    // unusually large, something is wrong (egent sent malformed
-                    // body); log once and keep waiting rather than OOM.
-                    if self.non_stream_buffer.len() > 8 * 1024 * 1024 {
-                        warn!(
-                            buffered = self.non_stream_buffer.len(),
-                            "non-streaming buffer exceeds 8 MiB without a valid ChatCompletionsResponse"
-                        );
+            // Try to parse — egents sometimes omit `usage` (it's a required
+            // field in hermesllm's struct). The Usage sub-struct also has
+            // required u32 fields, so injecting `{}` isn't enough; we inject
+            // a full zero-default shape when `usage` is absent.
+            let parsed = serde_json::from_slice::<serde_json::Value>(&self.non_stream_buffer)
+                .ok()
+                .and_then(|mut v| {
+                    if v.get("usage").is_none() {
+                        v["usage"] = serde_json::json!({
+                            "prompt_tokens": 0,
+                            "completion_tokens": 0,
+                            "total_tokens": 0,
+                        });
                     }
-                    debug!(
+                    serde_json::from_value::<ChatCompletionsResponse>(v).ok()
+                });
+            if let Some(cc) = parsed {
+                let resp: ResponsesAPIResponse = cc
+                    .try_into()
+                    .map_err(|e| format!("translate ChatCompletions→Responses: {e}"))?;
+                let bytes = serde_json::to_vec(&resp)
+                    .map_err(|e| format!("serialize ResponsesAPIResponse: {e}"))?;
+                self.non_stream_buffer.clear();
+                Ok(Some(Bytes::from(bytes)))
+            } else {
+                // Incomplete JSON — wait for more bytes. If the buffer is
+                // unusually large, something is wrong (egent sent malformed
+                // body); log once and keep waiting rather than OOM.
+                if self.non_stream_buffer.len() > 8 * 1024 * 1024 {
+                    warn!(
                         buffered = self.non_stream_buffer.len(),
-                        "non-streaming response incomplete, buffering"
+                        "non-streaming buffer exceeds 8 MiB without a valid ChatCompletionsResponse"
                     );
-                    Ok(None)
                 }
+                debug!(
+                    buffered = self.non_stream_buffer.len(),
+                    "non-streaming response incomplete, buffering"
+                );
+                Ok(None)
             }
         }
     }
 
     fn on_complete(&mut self) {
-        // If we ended with buffered bytes that never parsed (egent error body,
-        // malformed JSON, etc.), emit them verbatim as a best-effort so the
-        // client sees something rather than a truncated response. This is a
-        // degenerate path — success responses always parse in process_chunk.
+        // Diagnostics only — the StreamProcessor contract doesn't let us emit
+        // bytes from on_complete, so any leftover non-stream buffer is dropped.
+        // In practice the buffer is always empty here for success responses:
+        // the egent's ChatCompletions JSON parses as soon as the body is
+        // complete, well before the stream ends. A non-empty buffer indicates
+        // either a premature disconnect or a malformed body — log it so the
+        // "size=0 from client" symptom is debuggable.
         if !self.is_streaming && !self.non_stream_buffer.is_empty() {
             warn!(
                 buffered = self.non_stream_buffer.len(),
-                "flushing unparseable non-streaming buffer verbatim on stream complete"
+                "non-streaming buffer unparsed at stream complete — dropped (egent returned malformed body or disconnected early?)"
             );
         }
     }
@@ -244,6 +260,20 @@ mod tests {
         // Second half: complete JSON → Some(translated)
         let out2 = p.process_chunk(Bytes::from(b.to_vec())).unwrap();
         assert!(out2.is_some(), "second half should complete + emit");
+    }
+
+    #[tokio::test]
+    async fn test_non_streaming_handles_missing_usage_field() {
+        // The egent omits `usage` on simple tool-call responses. The translator
+        // must inject a default rather than fail to deserialize.
+        let body = br#"{"id":"x","object":"chat.completion","created":1,"model":"m","choices":[{"index":0,"message":{"role":"assistant","content":"ok"},"finish_reason":"stop"}]}"#;
+
+        let mut p = AgentResponsesTranslatorProcessor::new(false);
+        let out = p.process_chunk(Bytes::from(&body[..])).unwrap();
+        assert!(out.is_some(), "must emit despite missing usage");
+        let out_bytes = out.unwrap();
+        let resp: ResponsesAPIResponse = serde_json::from_slice(&out_bytes).unwrap();
+        assert_eq!(resp.object, "response");
     }
 
     #[tokio::test]
