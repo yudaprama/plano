@@ -1,0 +1,19 @@
+crates/brightstaff/src/handlers/llm/mod.rs
+  s_42bc2632d74123::t_47fb702517d968 1132
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "682c28c884240b1020a0d634c706337e4cc77959",
+  "prompts": {},
+  "sessions": {
+    "s_42bc2632d74123": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_05e603aceffeasFHIExtuWG6ed",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
