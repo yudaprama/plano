@@ -5,7 +5,7 @@ use common::configuration::{Agent, AgentFilterChain};
 use common::consts::{
     ARCH_UPSTREAM_HOST_HEADER, BRIGHT_STAFF_SERVICE_NAME, ENVOY_RETRY_HEADER, TRACE_PARENT_HEADER,
 };
-use hermesllm::apis::openai::Message;
+use hermesllm::apis::openai::{ChatCompletionsRequest, Message};
 use hermesllm::{ProviderRequest, ProviderRequestType};
 use hyper::header::HeaderMap;
 use opentelemetry::global;
@@ -578,9 +578,26 @@ impl PipelineProcessor {
     ) -> Result<reqwest::Response, PipelineError> {
         original_request.set_messages(messages);
 
+        // Egents only speak Chat Completions. If the client used the Responses
+        // API (/v1/responses), translate the request to Chat Completions before
+        // POSTing downstream. The URL stays /v1/chat/completions regardless.
+        let sendable_request: ProviderRequestType = match original_request {
+            ProviderRequestType::ResponsesAPIRequest(r) => {
+                match ChatCompletionsRequest::try_from(r) {
+                    Ok(cc) => ProviderRequestType::ChatCompletionsRequest(cc),
+                    Err(e) => {
+                        return Err(PipelineError::NoContentInResponse(format!(
+                            "translate Responses→ChatCompletions: {e}"
+                        )))
+                    }
+                }
+            }
+            other => other,
+        };
+
         let request_url = "/v1/chat/completions";
 
-        let request_body = ProviderRequestType::to_bytes(&original_request)
+        let request_body = ProviderRequestType::to_bytes(&sendable_request)
             .map_err(|e| PipelineError::NoContentInResponse(e.to_string()))?;
         debug!("sending request to terminal agent {}", terminal_agent.id);
 
