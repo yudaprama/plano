@@ -1125,11 +1125,11 @@ async fn get_provider_info(
 #[cfg(test)]
 mod tests {
     use super::{get_provider_info, get_upstream_path, is_retryable_status};
-    use hyper::StatusCode;
     use common::configuration::{LlmProvider, LlmProviderType};
     use common::llm_providers::LlmProviders;
     use hermesllm::apis::OpenAIApi;
     use hermesllm::clients::SupportedAPIsFromClient;
+    use hyper::StatusCode;
     use std::sync::Arc;
     use tokio::sync::RwLock;
 
