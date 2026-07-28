@@ -1,0 +1,26 @@
+docs/source/guides/billing.rst
+  s_e792c5c6974feb::t_d5c2b7ab7b3881 18
+  s_e792c5c6974feb::t_1c4e0eec34c9ff 4,15-17,19,31,33,35,37,39,41,43,50-51,53-54,56-57,59-60,65,69-80,82,84,86,88-89,115,120-121,123,127-132,135-139,141,144,146-149,151-153,155-156,158-159,161,163-165,167-169,171,173,175-176,178-189,191-192,194,196-199,201
+FORK.md
+  s_e792c5c6974feb::t_30a03569646ffd 42,51,61
+demos/getting_started/weather_forecast/README.md
+  s_e792c5c6974feb::t_0c856e99fb2e7d 38-39,45
+docs/source/resources/db_setup/README.md
+  s_e792c5c6974feb::t_7ac97de3d919b5 3,23,28
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.16",
+  "base_commit_sha": "7df567de02feb3ef2244ec5437cd87efae2ea93e",
+  "prompts": {},
+  "sessions": {
+    "s_e792c5c6974feb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_05ae744baffeitjPMeWYykcL6H",
+        "model": "mimo-v2.5-free"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
