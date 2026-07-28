@@ -39,7 +39,7 @@ These commits are on the fork's `main` but not in `upstream/main` (as of
 
 New crate: `crates/brightstaff/src/billing/`
 
-- `mod.rs` — `BillingService` wiring (Redis-backed balance + Postgres audit)
+- `mod.rs` — `BillingService` wiring (Redis-backed balance + usage logging)
 - `talos.rs` — Talos key-verification HTTP client
 - `balance.rs` — Redis-backed balance read/decrement (`DECRBY` × 1e6)
 - `cost.rs` — Per-model cost calculation (input/output tokens, cache discount)
@@ -48,7 +48,7 @@ New crate: `crates/brightstaff/src/billing/`
 Plumbed into:
 
 - `crates/brightstaff/src/handlers/llm/mod.rs` — verify → pre-check →
-  forward → deduct → audit
+  forward → deduct → log
 - `crates/brightstaff/src/streaming.rs` — same flow for streaming responses
 - `crates/brightstaff/src/metrics/mod.rs` — `plano_billing_*` Prometheus
   metrics
@@ -58,8 +58,7 @@ Plumbed into:
 - `config/plano_config_schema.yaml` — JSON schema for the new block
 - `demos/getting_started/weather_forecast/config.yaml` — example config
 
-New database table: `billing_audit_log`
-(migration: `docs/source/resources/db_setup/billing.sql`).
+Usage is logged to Talos for audit and analytics.
 
 ### 2. Hardening pass (`cf0fd509`)
 

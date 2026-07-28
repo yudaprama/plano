@@ -244,8 +244,6 @@ billing:
   redis_url: redis://localhost:6379
   talos_url: http://localhost:8081
   talos_admin_token: $TALOS_ADMIN_TOKEN
-  # Optional. If unset, billing uses state_storage.connection_string when state_storage.type is postgres.
-  # audit_database_url: postgresql://user:$DB_PASS@localhost:5432/plano
   minimum_balance: 1.0
   verify_cache_ttl_secs: 60
   talos_timeout_secs: 5

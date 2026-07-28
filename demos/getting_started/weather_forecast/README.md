@@ -35,18 +35,14 @@ sh run_demo.sh --with-ui
 
 This demo includes billing configuration (currently disabled). To enable usage-based billing:
 
-1. Set up Redis and PostgreSQL for billing (see [Billing Guide](../../../docs/source/guides/billing.rst))
-2. Run the billing SQL migration:
-   ```sh
-   psql $DATABASE_URL -f docs/source/resources/db_setup/billing.sql
-   ```
-3. Set environment variables:
+1. Set up Redis for billing (see [Billing Guide](../../../docs/source/guides/billing.rst))
+2. Set environment variables:
    ```sh
    export REDIS_URL="redis://localhost:6379"
    export TALOS_URL="https://your-talos-instance.com"  # Optional
    export TALOS_ADMIN_TOKEN="your-token"  # Optional
    ```
-4. Enable billing in `config.yaml`:
+3. Enable billing in `config.yaml`:
    ```yaml
    billing:
      enabled: true
