@@ -10,8 +10,13 @@ use hermesllm::transforms::ExtractText;
 use hermesllm::ProviderRequestType;
 use http_body_util::combinators::BoxBody;
 use http_body_util::BodyExt;
+use http_body_util::StreamBody;
+use hyper::body::Frame;
 use hyper::{Request, Response};
 use opentelemetry::trace::get_active_span;
+use tokio::sync::mpsc;
+use tokio_stream::wrappers::ReceiverStream;
+use tokio_stream::StreamExt;
 use tracing::{debug, info, info_span, warn, Instrument};
 
 use super::errors::build_error_chain_response;
@@ -398,6 +403,12 @@ async fn execute_agent_chain(
                     ));
                 }
                 info!(agent = %agent_name, "completed in-process rig agent, returning response");
+                if client_request.is_streaming() {
+                    return Ok(rig_chat_completion_streaming_response(
+                        &reply,
+                        client_request.model(),
+                    ));
+                }
                 return Ok(rig_chat_completion_response(&reply, client_request.model()));
             }
 
@@ -567,6 +578,98 @@ fn rig_full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, hyper::Error> {
     http_body_util::Full::new(chunk.into())
         .map_err(|never| match never {})
         .boxed()
+}
+
+/// Build an SSE streaming chat.completion.chunk response for the rig agent.
+/// Since rig calls the LLM non-streaming internally, the full content is
+/// framed as a single delta chunk to satisfy `stream: true` clients.
+fn rig_chat_completion_streaming_response(
+    content: &str,
+    model: &str,
+) -> Response<BoxBody<Bytes, hyper::Error>> {
+    let created = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let id = format!("chatcmpl-rig-{}", uuid::Uuid::new_v4().simple());
+    let model = model.to_string();
+    let content = content.to_string();
+    let (tx, rx) = mpsc::channel::<Bytes>(16);
+
+    tokio::spawn(async move {
+        let role_chunk = serde_json::json!({
+            "id": id.clone(),
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model.clone(),
+            "choices": [{
+                "index": 0,
+                "delta": { "role": "assistant", "content": "" },
+                "finish_reason": null
+            }]
+        });
+        if tx
+            .send(format!("data: {}\n\n", role_chunk).into())
+            .await
+            .is_err()
+        {
+            return;
+        }
+
+        let content_chunk = serde_json::json!({
+            "id": id.clone(),
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model.clone(),
+            "choices": [{
+                "index": 0,
+                "delta": { "content": content.clone() },
+                "finish_reason": null
+            }]
+        });
+        if tx
+            .send(format!("data: {}\n\n", content_chunk).into())
+            .await
+            .is_err()
+        {
+            return;
+        }
+
+        let finish_chunk = serde_json::json!({
+            "id": id,
+            "object": "chat.completion.chunk",
+            "created": created,
+            "model": model,
+            "choices": [{
+                "index": 0,
+                "delta": {},
+                "finish_reason": "stop"
+            }]
+        });
+        if tx
+            .send(format!("data: {}\n\n", finish_chunk).into())
+            .await
+            .is_err()
+        {
+            return;
+        }
+
+        let _ = tx.send("data: [DONE]\n\n".into()).await;
+    });
+
+    let stream = ReceiverStream::new(rx).map(|chunk| Ok::<_, hyper::Error>(Frame::data(chunk)));
+    let stream_body = BoxBody::new(StreamBody::new(stream));
+
+    let mut response = Response::new(stream_body);
+    response.headers_mut().insert(
+        hyper::header::CONTENT_TYPE,
+        hyper::header::HeaderValue::from_static("text/event-stream"),
+    );
+    response.headers_mut().insert(
+        hyper::header::CACHE_CONTROL,
+        hyper::header::HeaderValue::from_static("no-cache"),
+    );
+    response
 }
 
 /// Build the final HTTP response for a Responses-API client by translating the
