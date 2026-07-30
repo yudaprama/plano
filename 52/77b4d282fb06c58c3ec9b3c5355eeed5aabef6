@@ -1,0 +1,22 @@
+crates/brightstaff/src/handlers/agents/orchestrator.rs
+  s_dfbf78b5d51e07::t_de9467a622d017 407-410,611-615,630-634,649-653
+  s_dfbf78b5d51e07::t_445b346678e931 13-14,17-19
+  s_dfbf78b5d51e07::t_ee784118be56c2 583-610,616-629,635-648,654-674
+  s_dfbf78b5d51e07::t_4c7b6d93ad5c02 406,411
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "5277b4d282fb06c58c3ec9b3c5355eeed5aabef6",
+  "prompts": {},
+  "sessions": {
+    "s_dfbf78b5d51e07": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_04efa85f6ffepg0eS8jXsDnkSe",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
