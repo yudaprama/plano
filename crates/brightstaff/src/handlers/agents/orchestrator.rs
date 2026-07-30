@@ -6,6 +6,7 @@ use hermesllm::apis::openai_responses::InputItem;
 use hermesllm::apis::OpenAIMessage;
 use hermesllm::clients::SupportedAPIsFromClient;
 use hermesllm::providers::request::ProviderRequest;
+use hermesllm::transforms::ExtractText;
 use hermesllm::ProviderRequestType;
 use http_body_util::combinators::BoxBody;
 use http_body_util::BodyExt;
@@ -320,6 +321,7 @@ async fn execute_agent_chain(
     original_input_items: Vec<InputItem>,
     state_storage: Option<&Arc<dyn StateStorage>>,
     request_id: String,
+    llm_provider_url: String,
 ) -> Result<Response<BoxBody<Bytes, hyper::Error>>, AgentFilterChainError> {
     let mut pipeline_processor = PipelineProcessor::default();
     let response_handler = ResponseHandler::new();
@@ -379,6 +381,41 @@ async fn execute_agent_chain(
             agent_id = %agent_name,
             message_count = chat_history.len(),
         );
+
+        // --- In-process Rig agent (fork) -------------------------------------
+        // Agents configured with `type: rig` run their tool loop inside
+        // brightstaff against plano's model gateway, instead of being proxied
+        // to an external egent over HTTP. See `crates/rig_agent` + FORK.md.
+        if agent.agent_type.as_deref() == Some("rig") {
+            let reply = invoke_rig_agent(&chat_history, client_request.model(), &llm_provider_url)
+                .instrument(agent_span.clone())
+                .await?;
+
+            if is_last_agent {
+                if is_responses_api_client {
+                    return Err(AgentFilterChainError::RequestParsing(
+                        "in-process rig agent does not yet support the Responses API".into(),
+                    ));
+                }
+                info!(agent = %agent_name, "completed in-process rig agent, returning response");
+                return Ok(rig_chat_completion_response(&reply, client_request.model()));
+            }
+
+            debug!(agent = %agent_name, "collecting response from intermediate rig agent");
+            let Some(last_message) = current_messages.pop() else {
+                warn!(agent = %agent_name, "no messages in conversation history");
+                return Err(AgentFilterChainError::EmptyHistory);
+            };
+            current_messages.push(OpenAIMessage {
+                role: hermesllm::apis::openai::Role::Assistant,
+                content: Some(hermesllm::apis::openai::MessageContent::Text(reply)),
+                name: Some(agent_name.clone()),
+                tool_calls: None,
+                tool_call_id: None,
+            });
+            current_messages.push(last_message);
+            continue;
+        }
 
         let llm_response = async {
             set_service_name(operation_component::AGENT);
@@ -467,6 +504,69 @@ async fn execute_agent_chain(
     }
 
     Err(AgentFilterChainError::IncompleteChain)
+}
+
+/// Run an in-process Rig agent (`type: rig`) against plano's model gateway.
+async fn invoke_rig_agent(
+    chat_history: &[OpenAIMessage],
+    model: &str,
+    llm_provider_url: &str,
+) -> Result<String, AgentFilterChainError> {
+    set_service_name(operation_component::AGENT);
+    let user_text = last_user_text(chat_history);
+    // The gateway is reached loopback like the orchestrator; a placeholder
+    // bearer is used unless the internal key is configured (see FORK.md).
+    let api_key =
+        std::env::var("PLANO_INTERNAL_KEY").unwrap_or_else(|_| "plano-internal".to_string());
+    rig_agent::run_chat(&user_text, model, llm_provider_url, &api_key)
+        .await
+        .map_err(|e| AgentFilterChainError::RequestParsing(format!("in-process rig agent: {e}")))
+}
+
+/// Extract the last user message text from the chat history for the Rig prompt.
+fn last_user_text(messages: &[OpenAIMessage]) -> String {
+    messages
+        .iter()
+        .rev()
+        .find(|m| m.role == hermesllm::apis::openai::Role::User)
+        .and_then(|m| m.content.as_ref().map(|c| c.extract_text().to_string()))
+        .unwrap_or_default()
+}
+
+/// Build a non-streaming OpenAI ChatCompletions response wrapping the Rig
+/// agent's final text. (SSE for `stream:true` clients is a follow-up.)
+fn rig_chat_completion_response(
+    content: &str,
+    model: &str,
+) -> Response<BoxBody<Bytes, hyper::Error>> {
+    let created = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map(|d| d.as_secs())
+        .unwrap_or(0);
+    let id = format!("chatcmpl-rig-{}", uuid::Uuid::new_v4().simple());
+    let body = serde_json::json!({
+        "id": id,
+        "object": "chat.completion",
+        "created": created,
+        "model": model,
+        "choices": [{
+            "index": 0,
+            "message": { "role": "assistant", "content": content },
+            "finish_reason": "stop"
+        }]
+    });
+    let mut response = Response::new(rig_full(body.to_string()));
+    response.headers_mut().insert(
+        hyper::header::CONTENT_TYPE,
+        hyper::header::HeaderValue::from_static("application/json"),
+    );
+    response
+}
+
+fn rig_full<T: Into<Bytes>>(chunk: T) -> BoxBody<Bytes, hyper::Error> {
+    http_body_util::Full::new(chunk.into())
+        .map_err(|never| match never {})
+        .boxed()
 }
 
 /// Build the final HTTP response for a Responses-API client by translating the
@@ -748,6 +848,7 @@ async fn handle_agent_chat_inner(
         original_input_items,
         state.state_storage.as_ref(),
         req_id_str,
+        state.llm_provider_url.clone(),
     )
     .await
 }

@@ -184,6 +184,51 @@ Caveats:
   (e.g. all OpenAI-compatible). This is documented in the struct but **not
   enforced in code** — mixing interfaces will silently misbehave.
 
+### 7. In-process Rig agent (`type: rig`)
+
+A top-level `agents[]` entry may set `type: rig`. Such an agent is **not** an
+external HTTP service (unlike the egents, which brightstaff proxies to over
+`/v1/chat/completions`); instead brightstaff runs its tool loop **in-process**
+via the `rig` crate, against plano's own model gateway (`llm_provider_url`).
+
+```yaml
+agents:
+  - id: egent_rig_demo
+    url: http://127.0.0.1:9   # placeholder; never contacted
+    type: rig
+```
+
+- New crate `crates/rig_agent` (native-only; depends on `rig`). Exposes
+  `run_chat(user_text, model, gateway_root, api_key) -> Result<String>` which
+  builds an OpenAI-compatible `rig` client pointed at `{llm_provider_url}/v1`
+  and runs a tool loop. The PoC ships a single `current_time` tool.
+- `crates/brightstaff/src/handlers/agents/orchestrator.rs::execute_agent_chain`
+  branches on `agent.agent_type == Some("rig")` **before** the Envoy proxy
+  path (`PipelineProcessor::invoke_agent`): it calls `rig_agent::run_chat` and,
+  for the terminal agent, returns a non-streaming `chat.completion` JSON
+  response built directly (mirrors `function_calling_chat_handler`). `llm_provider_url`
+  is threaded through as a new param from `handle_agent_chat_inner`.
+- `config/plano_config_schema.yaml` allows `type: rig` on `agents[]` items
+  (previously `id`+`url` only, `additionalProperties: false`).
+- The `url` is still required by the schema; it's a placeholder sinkhole
+  (`http://127.0.0.1:9`) that Envoy clusters onto but brightstaff never
+  contacts, because the rig branch short-circuits first.
+
+Caveats / known PoC limits:
+
+- **Non-streaming only.** The rig path returns a single `chat.completion`
+  JSON. Clients sending `stream:true` (e.g. the web UI) are not yet supported
+  — SSE `chat.completion.chunk` framing is a follow-up.
+- **No Responses-API support.** A `type: rig` agent returns an error if the
+  client used `/v1/responses`.
+- **Auth to the gateway is unverified.** The rig client sends a bearer from
+  `$PLANO_INTERNAL_KEY` (placeholder `plano-internal` if unset) to the same
+  `llm_provider_url` the orchestrator already calls loopback. If that endpoint
+  enforces `x-arch-internal-key`, a custom reqwest client must be wired in.
+- **Extra dep weight.** `rig` brings `reqwest 0.13` alongside brightstaff's
+  `reqwest 0.12` (two majors coexist) plus `async-openai`, growing compile time
+  and binary size. Native binary only — never pulled into the WASM crates.
+
 ## Known concerns (carried forward from `cf0fd509`)
 
 These are documented in the commit body but not yet fixed:
@@ -219,6 +264,8 @@ fallbacks.
 
 The WASM plugins (`prompt_gateway`, `llm_gateway`), the `hermesllm` crate,
 and the Envoy template are upstream-identical. The fork adds the billing
-module on top of `brightstaff`, patches the release workflows, and (since
+module on top of `brightstaff`, patches the release workflows, (since
 `7a3ec4d6`) extends `brightstaff`'s LLM proxy flow with multi-target alias
-routing and health-aware failover.
+routing and health-aware failover, and (since §7) adds an in-process Rig
+agent path (`crates/rig_agent` + a `type: rig` branch in `brightstaff` and
+the config schema).

@@ -20,6 +20,12 @@ properties:
           type: string
         url:
           type: string
+        # Fork: `type: rig` runs the agent in-process via crates/rig_agent
+        # instead of proxying to `url` (which then acts as a placeholder).
+        type:
+          type: string
+          enum:
+            - rig
       additionalProperties: false
       required:
         - id
