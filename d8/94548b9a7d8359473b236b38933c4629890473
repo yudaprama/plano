@@ -1,0 +1,26 @@
+crates/rig_agent/Cargo.toml
+  s_dfbf78b5d51e07::t_b758d21147c336 15
+crates/rig_agent/src/lib.rs
+  s_dfbf78b5d51e07::t_38582494767413 9-12
+  s_dfbf78b5d51e07::t_0e6a62aa14aad3 74
+  s_dfbf78b5d51e07::t_fde3a9cfec3558 45,51-55,61,64-73,75,80
+  s_dfbf78b5d51e07::t_d3d862f7ce1307 19,22
+crates/Cargo.lock
+  s_dfbf78b5d51e07::t_0707f8c0312f34 6620
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.6.18",
+  "base_commit_sha": "d894548b9a7d8359473b236b38933c4629890473",
+  "prompts": {},
+  "sessions": {
+    "s_dfbf78b5d51e07": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_04efa85f6ffepg0eS8jXsDnkSe",
+        "model": "glm-5.2"
+      },
+      "human_author": "yudaprama <yudhaprama@icloud.com>"
+    }
+  }
+}
