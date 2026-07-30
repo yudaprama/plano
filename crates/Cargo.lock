@@ -6617,6 +6617,7 @@ name = "rig_agent"
 version = "0.1.0"
 dependencies = [
  "chrono",
+ "http 1.4.0",
  "rig",
  "serde",
  "serde_json",

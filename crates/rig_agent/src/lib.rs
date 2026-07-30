@@ -6,17 +6,20 @@
 //! usual Envoy proxy path for any configured agent with `type: rig` and calls
 //! [`run_chat`] instead.
 //!
-//! The model is sourced from plano's existing model gateway (brightstaff's
-//! `llm_provider_url`, the same endpoint the Plano-Orchestrator calls), so the
-//! agent reuses plano's model aliases, health tracking, and routing.
+//! The agent routes through plano's **internal LLM ingress** (`:12010`) rather
+//! than the egress gateway (`:12001`) so the request passes through
+//! brightstaff's full handler chain, including model alias resolution,
+//! provider-hint injection, and health tracking.
 //!
 //! PoC scope: a single `current_time` tool validates that the in-process tool
 //! loop works end-to-end through the gateway. A real agent's purpose plugs in
 //! by replacing the preamble + tool set below.
 
 use chrono::Utc;
+use http::{HeaderName, HeaderValue};
 use rig::client::AgentClientExt;
 use rig::completion::Prompt;
+use rig::http_client::HeaderMap;
 use rig::providers::openai;
 use rig::tool::{DynamicTool, ToolOutput};
 use serde_json::json;
@@ -39,30 +42,42 @@ You have tools available. Use them when the user's request matches a tool's \
 purpose, then answer concisely using the tool result. If no tool applies, \
 answer directly.";
 
-/// Run the in-process Rig agent against plano's model gateway.
+/// Run the in-process Rig agent against plano's internal LLM ingress.
 ///
 /// - `user_text`: the assembled prompt for this turn (brightstaff extracts it
 ///   from the incoming request's last user message).
 /// - `model`: the model alias to send to the gateway (carried from the client
 ///   request, e.g. `kawai-pro-max`).
-/// - `gateway_root`: brightstaff's `llm_provider_url` — the host root with no
-///   trailing `/v1` (rig appends `/v1/chat/completions` itself).
-/// - `api_key`: bearer sent to the gateway. The gateway is reached loopback the
-///   same way the orchestrator reaches it, so a placeholder is usually fine.
+/// - `_gateway_root`: ignored — the agent always routes through the internal
+///   LLM ingress (`:12010`) so brightstaff's full handler chain (model alias
+///   resolution, provider-hint injection, health tracking) applies.
+/// - `api_key`: the `x-arch-internal-key` value for the internal ingress Lua
+///   gate; should match `PLANO_INTERNAL_KEY` (default: `plano-internal`).
 ///
 /// Returns the agent's final assistant text after the tool loop completes.
 pub async fn run_chat(
     user_text: &str,
     model: &str,
-    gateway_root: &str,
+    _gateway_root: &str,
     api_key: &str,
 ) -> Result<String> {
-    let base_url = format!("{}/v1", gateway_root.trim_end_matches('/'));
-    debug!(%base_url, %model, "rig agent calling plano model gateway");
+    // Route through the internal LLM ingress (:12010) which runs brightstaff's
+    // full handler chain, including model alias resolution. The egress gateway
+    // (:12001) expects a pre-resolved provider model name + provider-hint header
+    // set by brightstaff — the in-process agent can't supply those itself.
+    let base_url = "http://localhost:12010/v1".to_string();
+    debug!(%base_url, %model, "rig agent calling internal llm ingress");
+
+    let mut extra_headers = HeaderMap::new();
+    extra_headers.insert(
+        HeaderName::from_static("x-arch-internal-key"),
+        HeaderValue::from_str(api_key).map_err(|e| RigAgentError::ClientBuild(e.to_string()))?,
+    );
 
     let client = openai::Client::builder()
         .base_url(base_url)
         .api_key(api_key.to_string())
+        .http_headers(extra_headers)
         .build()
         .map_err(|e| RigAgentError::ClientBuild(e.to_string()))?;
 
