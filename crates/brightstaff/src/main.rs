@@ -3,7 +3,7 @@
 static ALLOC: tikv_jemallocator::Jemalloc = tikv_jemallocator::Jemalloc;
 
 use brightstaff::app_state::AppState;
-use brightstaff::handlers::agents::orchestrator::agent_chat;
+use brightstaff::handlers::agents::orchestrator::{agent_chat, agent_resume};
 use brightstaff::handlers::debug;
 use brightstaff::handlers::empty;
 use brightstaff::handlers::function_calling::function_calling_chat_handler;
@@ -45,6 +45,7 @@ use tracing::{debug, info, warn};
 const BIND_ADDRESS: &str = "0.0.0.0:9091";
 const DEFAULT_ORCHESTRATOR_LLM_PROVIDER: &str = "plano-orchestrator";
 const DEFAULT_ORCHESTRATOR_MODEL_NAME: &str = "Plano-Orchestrator";
+const AGENT_CHAT_RESUME_PATH: &str = "/v1/chat/completions/resume";
 
 /// Parse a version string like `v0.4.0`, `v0.3.0`, `0.2.0` into a `(major, minor, patch)` tuple.
 /// Missing parts default to 0. Non-numeric parts are treated as 0.
@@ -462,6 +463,9 @@ fn handler_label_for(method: &Method, path: &str) -> &'static str {
         ) {
             return metric_labels::HANDLER_AGENT_CHAT;
         }
+        if stripped == AGENT_CHAT_RESUME_PATH {
+            return metric_labels::HANDLER_AGENT_CHAT;
+        }
     }
     if let Some(stripped) = path.strip_prefix("/routing") {
         if matches!(
@@ -470,6 +474,9 @@ fn handler_label_for(method: &Method, path: &str) -> &'static str {
         ) {
             return metric_labels::HANDLER_ROUTING_DECISION;
         }
+    }
+    if method == &Method::POST && path == AGENT_CHAT_RESUME_PATH {
+        return metric_labels::HANDLER_AGENT_CHAT;
     }
     match (method, path) {
         (&Method::POST, CHAT_COMPLETIONS_PATH | MESSAGES_PATH | OPENAI_RESPONSES_API_PATH) => {
@@ -516,6 +523,11 @@ async fn dispatch(
 
     // --- Agent routes (/agents/...) ---
     if let Some(stripped) = path.strip_prefix("/agents") {
+        if stripped == AGENT_CHAT_RESUME_PATH && req.method() == Method::POST {
+            return agent_resume(req, Arc::clone(&state))
+                .with_context(parent_cx)
+                .await;
+        }
         if matches!(
             stripped,
             CHAT_COMPLETIONS_PATH | MESSAGES_PATH | OPENAI_RESPONSES_API_PATH
@@ -524,6 +536,13 @@ async fn dispatch(
                 .with_context(parent_cx)
                 .await;
         }
+    }
+
+    // HITL resume is an agent-runtime route, not an LLM-provider route.
+    if req.method() == Method::POST && path == AGENT_CHAT_RESUME_PATH {
+        return agent_resume(req, Arc::clone(&state))
+            .with_context(parent_cx)
+            .await;
     }
 
     // --- Routing decision routes (/routing/...) ---

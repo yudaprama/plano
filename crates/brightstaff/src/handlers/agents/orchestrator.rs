@@ -130,6 +130,44 @@ pub async fn agent_chat(
     .await
 }
 
+/// Resume an Eino checkpoint on the egent named by x-arch-agent-id.
+/// The initial turn emits this identity with its interrupt payload so the
+/// resume request can bypass model orchestration and return to the same
+/// process-local checkpoint store.
+pub async fn agent_resume(
+    request: Request<hyper::body::Incoming>,
+    state: Arc<AppState>,
+) -> Result<Response<BoxBody<Bytes, hyper::Error>>, hyper::Error> {
+    let Some(agent_id) = request
+        .headers()
+        .get("x-arch-agent-id")
+        .and_then(|value| value.to_str().ok())
+        .map(str::trim)
+        .filter(|value| !value.is_empty()) else {
+        return Ok(ResponseHandler::create_bad_request("x-arch-agent-id is required"));
+    };
+    let Some(agent) = state
+        .agents_list
+        .as_ref()
+        .and_then(|agents| agents.iter().find(|agent| agent.id == agent_id)) else {
+        return Ok(ResponseHandler::create_bad_request("agent not found"));
+    };
+    let headers = request.headers().clone();
+    let body = request.collect().await?.to_bytes();
+    let pipeline = PipelineProcessor::default();
+    let response = match pipeline.invoke_agent_resume(body, agent, &headers).await {
+        Ok(response) => response,
+        Err(error) => return Ok(ResponseHandler::create_internal_error(&error.to_string())),
+    };
+    match ResponseHandler::new()
+        .create_streaming_response(response, tracing::Span::current(), tracing::Span::current())
+        .await
+    {
+        Ok(response) => Ok(response),
+        Err(error) => Ok(ResponseHandler::create_internal_error(&error.to_string())),
+    }
+}
+
 /// Parsed and validated agent request data.
 struct AgentRequest {
     client_request: ProviderRequestType,

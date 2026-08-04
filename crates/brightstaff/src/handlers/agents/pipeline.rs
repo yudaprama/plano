@@ -613,6 +613,28 @@ impl PipelineProcessor {
 
         Ok(response)
     }
+
+    /// Resume an interrupted Eino turn directly on the originating egent.
+    /// Resume state is process-local to that egent, so this must not go through
+    /// orchestration or be sent to a different terminal agent.
+    pub async fn invoke_agent_resume(
+        &self,
+        raw_body: Bytes,
+        terminal_agent: &Agent,
+        request_headers: &HeaderMap,
+    ) -> Result<reqwest::Response, PipelineError> {
+        let agent_headers = Self::build_agent_headers(request_headers, &terminal_agent.id)?;
+        let response = self
+            .client
+            .post(format!("{}/v1/chat/completions/resume", terminal_agent.url))
+            .headers(agent_headers)
+            .header("Accept", "text/event-stream")
+            .header("Content-Type", "application/json")
+            .body(raw_body)
+            .send()
+            .await?;
+        Ok(response)
+    }
 }
 
 #[cfg(test)]
